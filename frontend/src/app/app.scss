@@ -233,58 +233,6 @@ p {
 	gap: 18px;
 }
 
-.modal-backdrop {
-	position: fixed;
-	inset: 0;
-	z-index: 30;
-	display: grid;
-	place-items: center;
-	padding: 20px;
-	background: rgba(2, 9, 15, 0.72);
-	backdrop-filter: blur(10px);
-}
-
-.modal-card {
-	width: min(920px, 100%);
-	max-height: min(92vh, 980px);
-	overflow: auto;
-	padding: 22px;
-	box-shadow: 0 28px 90px rgba(0, 0, 0, 0.42);
-}
-
-.modal-head {
-	display: flex;
-	justify-content: space-between;
-	gap: 16px;
-	align-items: flex-start;
-	margin-bottom: 18px;
-}
-
-.modal-head h2 {
-	font-size: 1.8rem;
-	color: #f7fbff;
-}
-
-.modal-close {
-	border: 0;
-	width: 42px;
-	height: 42px;
-	border-radius: 999px;
-	background: rgba(255, 255, 255, 0.08);
-	color: #f7fbff;
-	font-size: 1.5rem;
-	line-height: 1;
-	cursor: pointer;
-}
-
-.modal-form {
-	padding-top: 6px;
-}
-
-.modal-actions {
-	justify-content: flex-end;
-}
-
 .compact-card {
 	padding: 18px;
 }

@@ -1,0 +1,25 @@
+<div class="modal-backdrop" (click)="close()">
+  <section class="modal-card card" role="dialog" aria-modal="true" aria-labelledby="patient-modal-title" (click)="$event.stopPropagation()">
+    <div class="modal-head">
+      <div>
+        <p class="eyebrow">Alta</p>
+        <h2 id="patient-modal-title">Nuevo paciente</h2>
+      </div>
+      <button type="button" class="modal-close" (click)="close()">×</button>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="form-grid modal-form">
+      <label><span>Nombres</span><input type="text" formControlName="nombres" /></label>
+      <label><span>Apellidos</span><input type="text" formControlName="apellidos" /></label>
+      <label><span>DNI</span><input type="text" maxlength="8" formControlName="dni" /></label>
+      <label><span>Fecha de nacimiento</span><input type="date" formControlName="fecha_nacimiento" /></label>
+      <label><span>Sexo</span><select formControlName="sexo"><option *ngFor="let option of sexoOptions" [ngValue]="option.value">{{ option.label }}</option></select></label>
+      <label><span>Teléfono</span><input type="text" formControlName="telefono" /></label>
+      <div class="form-actions full-span modal-actions">
+        <button type="submit" class="action primary">Guardar paciente</button>
+        <button type="button" class="action ghost" (click)="reset()">Limpiar</button>
+        <button type="button" class="action ghost" (click)="close()">Cerrar</button>
+      </div>
+    </form>
+  </section>
+</div>

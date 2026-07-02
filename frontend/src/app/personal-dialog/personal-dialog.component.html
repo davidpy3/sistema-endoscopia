@@ -1,0 +1,23 @@
+<div class="modal-backdrop" (click)="close()">
+  <section class="modal-card card" role="dialog" aria-modal="true" aria-labelledby="personal-modal-title" (click)="$event.stopPropagation()">
+    <div class="modal-head">
+      <div>
+        <p class="eyebrow">Alta</p>
+        <h2 id="personal-modal-title">Nuevo personal</h2>
+      </div>
+      <button type="button" class="modal-close" (click)="close()">×</button>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="form-grid modal-form">
+      <label class="full-span"><span>Nombre completo</span><input type="text" formControlName="nombre_completo" /></label>
+      <label><span>Rol</span><select formControlName="rol"><option value="medico">Médico endoscopista</option><option value="enfermera">Enfermera asistente</option></select></label>
+      <label><span>Colegiatura</span><input type="text" formControlName="colegiatura" /></label>
+      <label><span>Activo</span><select formControlName="activo"><option [ngValue]="true">Sí</option><option [ngValue]="false">No</option></select></label>
+      <div class="form-actions full-span modal-actions">
+        <button type="submit" class="action primary">Guardar personal</button>
+        <button type="button" class="action ghost" (click)="reset()">Limpiar</button>
+        <button type="button" class="action ghost" (click)="close()">Cerrar</button>
+      </div>
+    </form>
+  </section>
+</div>

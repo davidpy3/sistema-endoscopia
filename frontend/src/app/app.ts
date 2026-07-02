@@ -5,6 +5,8 @@ import { forkJoin, lastValueFrom } from 'rxjs';
 
 import { EndoscopyApiService } from './endoscopy-api.service';
 import { ImageCategoriesPanelComponent } from './image-categories-panel/image-categories-panel.component';
+import { PatientDialogComponent, PatientFormValue } from './patient-dialog/patient-dialog.component';
+import { PersonalDialogComponent, PersonalFormValue } from './personal-dialog/personal-dialog.component';
 import {
   BiopsiaColonoscopia,
   BiopsiaEDA,
@@ -21,7 +23,6 @@ import {
   PILORO_OPTIONS,
   SegmentOption,
   SEDATION_OPTIONS,
-  SEXO_OPTIONS,
   SugerenciaColonoscopia,
   SugerenciaEDA,
 } from './models';
@@ -30,7 +31,7 @@ type TabKey = 'resumen' | 'pacientes' | 'personal' | 'colonoscopias' | 'eda' | '
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, ReactiveFormsModule, ImageCategoriesPanelComponent],
+  imports: [CommonModule, ReactiveFormsModule, ImageCategoriesPanelComponent, PatientDialogComponent, PersonalDialogComponent],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
@@ -80,8 +81,6 @@ export class App implements OnInit {
     images: this.images().length,
   }));
 
-  protected readonly patientForm = this.createPatientForm();
-  protected readonly personalForm = this.createPersonalForm();
   protected colonoscopiaForm = this.createColonoscopiaForm();
   protected edaForm = this.createEdaForm();
   protected readonly imageForm = this.createImageForm();
@@ -90,7 +89,6 @@ export class App implements OnInit {
   });
 
   protected readonly sedationOptions = SEDATION_OPTIONS;
-  protected readonly sexoOptions = SEXO_OPTIONS;
   protected readonly hillOptions = HILL_OPTIONS;
   protected readonly piloroOptions = PILORO_OPTIONS;
   protected readonly colonSegmentsData = COLON_SEGMENTS;
@@ -149,15 +147,9 @@ export class App implements OnInit {
     }
   }
 
-  protected async savePatient(): Promise<void> {
-    if (this.patientForm.invalid) {
-      this.statusMessage.set('Completa los campos del paciente antes de guardar.');
-      return;
-    }
-
+  protected async savePatient(payload: PatientFormValue): Promise<void> {
     try {
-      await lastValueFrom(this.api.create<Paciente>('pacientes', this.patientForm.getRawValue()));
-      this.patientForm.reset({ nombres: '', apellidos: '', dni: '', fecha_nacimiento: '', sexo: '', telefono: '' });
+      await lastValueFrom(this.api.create<Paciente>('pacientes', payload));
       this.statusMessage.set('Paciente registrado correctamente.');
       this.closePatientDialog();
       await this.refreshAll();
@@ -166,15 +158,9 @@ export class App implements OnInit {
     }
   }
 
-  protected async savePersonal(): Promise<void> {
-    if (this.personalForm.invalid) {
-      this.statusMessage.set('Completa los datos del personal antes de guardar.');
-      return;
-    }
-
+  protected async savePersonal(payload: PersonalFormValue): Promise<void> {
     try {
-      await lastValueFrom(this.api.create<Personal>('personal', this.personalForm.getRawValue()));
-      this.personalForm.reset({ nombre_completo: '', rol: 'medico', colegiatura: '', activo: true });
+      await lastValueFrom(this.api.create<Personal>('personal', payload));
       this.statusMessage.set('Personal registrado correctamente.');
       this.closePersonalDialog();
       await this.refreshAll();
@@ -286,14 +272,6 @@ export class App implements OnInit {
   protected onDraftSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     this.selectedDraftFile.set(input.files?.[0] ?? null);
-  }
-
-  protected resetPatientForm(): void {
-    this.patientForm.reset({ nombres: '', apellidos: '', dni: '', fecha_nacimiento: '', sexo: '', telefono: '' });
-  }
-
-  protected resetPersonalForm(): void {
-    this.personalForm.reset({ nombre_completo: '', rol: 'medico', colegiatura: '', activo: true });
   }
 
   protected resetColonoscopiaForm(): void {
@@ -466,26 +444,6 @@ export class App implements OnInit {
 
     const currentState = segmentGroup.get('estado')?.value;
     segmentGroup.get('texto')?.setValue(currentState === 'alterado' ? '' : segment.normalText);
-  }
-
-  private createPatientForm() {
-    return this.fb.group({
-      nombres: ['', Validators.required],
-      apellidos: ['', Validators.required],
-      dni: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(8)]],
-      fecha_nacimiento: [''],
-      sexo: [''],
-      telefono: [''],
-    });
-  }
-
-  private createPersonalForm() {
-    return this.fb.group({
-      nombre_completo: ['', Validators.required],
-      rol: ['medico', Validators.required],
-      colegiatura: [''],
-      activo: [true],
-    });
   }
 
   private createImageForm() {

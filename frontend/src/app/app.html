@@ -367,53 +367,15 @@
 
   </section>
 
-  <div class="modal-backdrop" *ngIf="patientDialogOpen()" (click)="closePatientDialog()">
-    <section class="modal-card card" role="dialog" aria-modal="true" aria-labelledby="patient-modal-title" (click)="$event.stopPropagation()">
-      <div class="modal-head">
-        <div>
-          <p class="eyebrow">Alta</p>
-          <h2 id="patient-modal-title">Nuevo paciente</h2>
-        </div>
-        <button type="button" class="modal-close" (click)="closePatientDialog()">×</button>
-      </div>
+  <app-patient-dialog
+    *ngIf="patientDialogOpen()"
+    (submitted)="savePatient($event)"
+    (closed)="closePatientDialog()"
+  ></app-patient-dialog>
 
-      <form [formGroup]="patientForm" (ngSubmit)="savePatient()" class="form-grid modal-form">
-        <label><span>Nombres</span><input type="text" formControlName="nombres" /></label>
-        <label><span>Apellidos</span><input type="text" formControlName="apellidos" /></label>
-        <label><span>DNI</span><input type="text" maxlength="8" formControlName="dni" /></label>
-        <label><span>Fecha de nacimiento</span><input type="date" formControlName="fecha_nacimiento" /></label>
-        <label><span>Sexo</span><select formControlName="sexo"><option *ngFor="let option of sexoOptions" [ngValue]="option.value">{{ option.label }}</option></select></label>
-        <label><span>Teléfono</span><input type="text" formControlName="telefono" /></label>
-        <div class="form-actions full-span modal-actions">
-          <button type="submit" class="action primary">Guardar paciente</button>
-          <button type="button" class="action ghost" (click)="resetPatientForm()">Limpiar</button>
-          <button type="button" class="action ghost" (click)="closePatientDialog()">Cerrar</button>
-        </div>
-      </form>
-    </section>
-  </div>
-
-  <div class="modal-backdrop" *ngIf="personalDialogOpen()" (click)="closePersonalDialog()">
-    <section class="modal-card card" role="dialog" aria-modal="true" aria-labelledby="personal-modal-title" (click)="$event.stopPropagation()">
-      <div class="modal-head">
-        <div>
-          <p class="eyebrow">Alta</p>
-          <h2 id="personal-modal-title">Nuevo personal</h2>
-        </div>
-        <button type="button" class="modal-close" (click)="closePersonalDialog()">×</button>
-      </div>
-
-      <form [formGroup]="personalForm" (ngSubmit)="savePersonal()" class="form-grid modal-form">
-        <label class="full-span"><span>Nombre completo</span><input type="text" formControlName="nombre_completo" /></label>
-        <label><span>Rol</span><select formControlName="rol"><option value="medico">Médico endoscopista</option><option value="enfermera">Enfermera asistente</option></select></label>
-        <label><span>Colegiatura</span><input type="text" formControlName="colegiatura" /></label>
-        <label><span>Activo</span><select formControlName="activo"><option [ngValue]="true">Sí</option><option [ngValue]="false">No</option></select></label>
-        <div class="form-actions full-span modal-actions">
-          <button type="submit" class="action primary">Guardar personal</button>
-          <button type="button" class="action ghost" (click)="resetPersonalForm()">Limpiar</button>
-          <button type="button" class="action ghost" (click)="closePersonalDialog()">Cerrar</button>
-        </div>
-      </form>
-    </section>
-  </div>
+  <app-personal-dialog
+    *ngIf="personalDialogOpen()"
+    (submitted)="savePersonal($event)"
+    (closed)="closePersonalDialog()"
+  ></app-personal-dialog>
 </main>
