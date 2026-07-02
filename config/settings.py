@@ -27,8 +27,8 @@ INSTALLED_APPS = [
     'django_filters',
     'crispy_forms',
     'crispy_bootstrap5',
-    'authentication',
-    'users',
+    'authentication.apps.AuthenticationConfig',
+    'users.apps.UsersConfig',
     'pacientes',
     'personal',
     'procedimientos',
@@ -104,10 +104,18 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 # Agregar esto al final de config/settings.py
 
 REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+    ],
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticatedOrReadOnly",
+        "authentication.permissions.RoleBasedAccessPermission",
     ],
 }
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:4200",
+    "http://127.0.0.1:4200",
+]

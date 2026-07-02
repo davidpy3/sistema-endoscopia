@@ -17,6 +17,61 @@ ESTADO_SEGMENTO_CHOICES = [
     ("alterado", "Alterado"),
 ]
 
+DEFAULT_PROCEDURE_CATALOG = [
+    {
+        "codigo": "endoscopia",
+        "nombre": "Endoscopia digestiva alta",
+        "descripcion": "Valoración diagnóstica y terapéutica de esófago, estómago y duodeno.",
+        "alcance": "Diagnóstico y tratamiento endoscópico",
+        "orden": 0,
+    },
+    {
+        "codigo": "colonoscopia",
+        "nombre": "Colonoscopía",
+        "descripcion": "Estudio completo de colon y recto con toma de biopsias y resección de lesiones.",
+        "alcance": "Diagnóstico, vigilancia y terapéutica",
+        "orden": 1,
+    },
+    {
+        "codigo": "laparoscopia",
+        "nombre": "Laparoscopía diagnóstica",
+        "descripcion": "Abordaje mínimamente invasivo para exploración abdominal y toma de muestras.",
+        "alcance": "Diagnóstico quirúrgico mínimamente invasivo",
+        "orden": 2,
+    },
+    {
+        "codigo": "cpre",
+        "nombre": "CPRE",
+        "descripcion": "Procedimiento endoscópico para vía biliar y pancreática con fines diagnósticos o terapéuticos.",
+        "alcance": "Endoscopia terapéutica avanzada",
+        "orden": 3,
+    },
+    {
+        "codigo": "otros",
+        "nombre": "Otros procedimientos gastroenterológicos",
+        "descripcion": "Polipectomía, hemostasia endoscópica, colocación de clips, extracción de cuerpos extraños y más.",
+        "alcance": "Apoyo diagnóstico y terapéutico",
+        "orden": 4,
+    },
+]
+
+
+class ProcedimientoGastro(models.Model):
+    codigo = models.CharField(max_length=50, unique=True)
+    nombre = models.CharField(max_length=120)
+    descripcion = models.CharField(max_length=255)
+    alcance = models.CharField(max_length=120)
+    orden = models.PositiveSmallIntegerField(default=0)
+    activo = models.BooleanField(default=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["orden", "id"]
+
+    def __str__(self):
+        return self.nombre
+
 
 class ProcedimientoBase(models.Model):
     """Campos comunes a la sección '1. Datos del paciente y del procedimiento'

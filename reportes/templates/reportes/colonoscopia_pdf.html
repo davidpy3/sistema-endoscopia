@@ -6,214 +6,444 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>Informe de Colonoscopía</title>
 	{% include "reportes/_report_style.html" %}
+	<style>
+		.page {
+			padding: 10px 12px 14px;
+		}
+
+		.report-brand {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			margin-bottom: 8px;
+		}
+
+		.brand-mark {
+			display: grid;
+			grid-template-columns: repeat(2, 14px);
+			grid-template-rows: repeat(2, 14px);
+			gap: 3px;
+			flex: 0 0 auto;
+		}
+
+		.brand-mark span {
+			border-radius: 2px;
+			display: block;
+		}
+
+		.brand-mark span:nth-child(1) { background: #1d4ed8; }
+		.brand-mark span:nth-child(2) { background: #f59e0b; }
+		.brand-mark span:nth-child(3) { background: #3b82f6; }
+		.brand-mark span:nth-child(4) { background: #eab308; }
+
+		.brand-text .clinic {
+			font-size: 18px;
+			font-weight: 700;
+			color: #3c4b66;
+			line-height: 1;
+		}
+
+		.brand-text .clinic-subtitle {
+			font-size: 11px;
+			color: #6b7280;
+			margin-top: 2px;
+		}
+
+		.report-title-bar {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			border: 1px solid #8f97a3;
+			border-width: 1px 0;
+			padding: 4px 0;
+			margin: 6px 0 10px;
+		}
+
+		.report-title {
+			flex: 1;
+			text-align: center;
+			font-size: 15px;
+			font-weight: 800;
+			letter-spacing: 0.03em;
+			text-transform: uppercase;
+			color: #374151;
+		}
+
+		.report-date {
+			min-width: 120px;
+			text-align: right;
+			font-size: 11px;
+			color: #475569;
+		}
+
+		.top-grid {
+			display: grid;
+			grid-template-columns: 1.8fr 1fr;
+			gap: 8px;
+			align-items: stretch;
+		}
+
+		.meta-box,
+		.figure-box,
+		.report-block,
+		.report-signature {
+			border: 1px solid #8f97a3;
+			background: #fff;
+		}
+
+		.meta-box {
+			padding: 8px;
+		}
+
+		.meta-grid {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 6px 14px;
+		}
+
+		.meta-item {
+			display: grid;
+			grid-template-columns: 115px 1fr;
+			gap: 6px;
+			font-size: 10.5px;
+			line-height: 1.25;
+		}
+
+		.meta-label {
+			font-weight: 700;
+			color: #28364d;
+		}
+
+		.meta-value {
+			color: #111827;
+		}
+
+		.figure-box {
+			padding: 8px;
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+			gap: 8px;
+		}
+
+		.figure-caption {
+			font-size: 10px;
+			font-weight: 700;
+			letter-spacing: 0.06em;
+			color: #475569;
+		}
+
+		.figure-svg {
+			width: 100%;
+			max-width: 185px;
+			height: 108px;
+		}
+
+		.image-strip {
+			margin-top: 8px;
+			border: 1px solid #8f97a3;
+			padding: 6px;
+		}
+
+		.image-strip-title {
+			text-align: center;
+			font-size: 10px;
+			font-weight: 700;
+			letter-spacing: 0.08em;
+			color: #375e7a;
+			margin-bottom: 6px;
+		}
+
+		.image-grid-top {
+			display: grid;
+			grid-template-columns: repeat(4, 1fr);
+			gap: 6px;
+		}
+
+		.image-grid-bottom {
+			display: flex;
+			justify-content: center;
+			margin-top: 6px;
+		}
+
+		.image-card {
+			border: 1px solid #6b7280;
+			overflow: hidden;
+			background: #fff;
+		}
+
+		.image-card img {
+			width: 100%;
+			height: 78px;
+			object-fit: cover;
+			display: block;
+		}
+
+		.image-card.small img {
+			height: 74px;
+		}
+
+		.image-caption {
+			font-size: 9px;
+			padding: 3px 4px;
+			border-top: 1px solid #d1d5db;
+			background: #f8fafc;
+			text-align: center;
+			min-height: 18px;
+		}
+
+		.bottom-grid {
+			display: grid;
+			grid-template-columns: 1.35fr 1fr;
+			gap: 8px;
+			margin-top: 8px;
+		}
+
+		.report-block {
+			padding: 8px;
+		}
+
+		.report-block h3 {
+			margin: 0 0 6px;
+			font-size: 11px;
+			text-transform: uppercase;
+			color: #284a6a;
+			border-bottom: 1px solid #d1d5db;
+			padding-bottom: 3px;
+		}
+
+		.block-kv {
+			display: grid;
+			grid-template-columns: 110px 1fr;
+			gap: 5px 8px;
+			font-size: 10.5px;
+		}
+
+		.block-label {
+			font-weight: 700;
+			color: #374151;
+		}
+
+		.block-text,
+		.segment-note,
+		.report-list,
+		.report-list li {
+			font-size: 10.5px;
+			line-height: 1.35;
+		}
+
+		.report-list {
+			margin: 0;
+			padding-left: 16px;
+		}
+
+		.report-list li {
+			margin-bottom: 4px;
+		}
+
+		.segment-note {
+			margin-top: 2px;
+			color: #4b5563;
+		}
+
+		.signature-row {
+			margin-top: 8px;
+			display: flex;
+			justify-content: flex-end;
+		}
+
+		.report-signature {
+			min-width: 230px;
+			padding: 10px 12px 8px;
+			text-align: center;
+			font-size: 10.5px;
+		}
+
+		.report-signature .line {
+			border-top: 1px solid #111827;
+			padding-top: 5px;
+			font-weight: 700;
+		}
+
+		.muted-note {
+			font-size: 10px;
+			color: #6b7280;
+		}
+
+		.spacer {
+			height: 6px;
+		}
+
+		@media print {
+			.page {
+				padding: 0;
+			}
+		}
+	</style>
 </head>
 <body>
 	<div class="page">
-		<div class="header">
-			<div>
-				<div class="hospital">HOSPITAL REGIONAL DE TUMBES — JAMO II-2</div>
-				<div class="service">SERVICIO DE GASTROENTEROLOGÍA</div>
+		<div class="report-brand">
+			<div class="brand-mark" aria-hidden="true">
+				<span></span><span></span><span></span><span></span>
 			</div>
-			<div>
-				<div class="badge">COLONOSCOPÍA</div>
-				<div class="subtitle" style="margin-top: 8px; text-align: right;">
-					Fecha: {{ c.fecha|date:"d/m/Y" }}
+			<div class="brand-text">
+				<div class="clinic">Clínica San Bartolomé</div>
+				<div class="clinic-subtitle">Servicio de Gastroenterología</div>
+				<div class="clinic-subtitle">HOSPITAL REGIONAL DE TUMBES — JAMO II-2</div>
+			</div>
+		</div>
+
+		<div class="report-title-bar">
+			<div class="report-title">Informe de Colonoscopia</div>
+			<div class="report-date">Fecha: {{ c.fecha|date:"d/m/Y" }}</div>
+		</div>
+
+		<div class="top-grid">
+			<div class="meta-box">
+				<div class="meta-grid">
+					<div class="meta-item"><div class="meta-label">Nombres</div><div class="meta-value">{{ c.paciente.nombres }} {{ c.paciente.apellidos }}</div></div>
+					<div class="meta-item"><div class="meta-label">Sexo</div><div class="meta-value">{{ c.paciente.sexo|default:"—" }}</div></div>
+					<div class="meta-item"><div class="meta-label">Edad</div><div class="meta-value">{{ edad|dash }}</div></div>
+					<div class="meta-item"><div class="meta-label">DNI</div><div class="meta-value">{{ c.paciente.dni|dash }}</div></div>
+					<div class="meta-item"><div class="meta-label">Solicitado por</div><div class="meta-value">{{ c.medico.nombre_completo }}</div></div>
+					<div class="meta-item"><div class="meta-label">Premedicación</div><div class="meta-value">{{ c.farmacos|dash }}</div></div>
+					<div class="meta-item"><div class="meta-label">Indicación</div><div class="meta-value">{{ c.motivo|dash }}</div></div>
+					<div class="meta-item"><div class="meta-label">Observaciones</div><div class="meta-value">{{ c.antecedentes|dash }}</div></div>
+					<div class="meta-item"><div class="meta-label">Sedación</div><div class="meta-value">{{ c.get_sedacion_display|dash }}</div></div>
+					<div class="meta-item"><div class="meta-label">Tiempo retiro</div><div class="meta-value">{{ c.tiempo_retiro_min|dash }} min</div></div>
+					<div class="meta-item"><div class="meta-label">Boston total</div><div class="meta-value">{{ boston_total|dash }}</div></div>
+					<div class="meta-item"><div class="meta-label">Prep. adecuada</div><div class="meta-value">{{ prep_adecuada_txt|dash }}</div></div>
 				</div>
 			</div>
-		</div>
 
-		<div class="section">
-			<h2>1. Datos del paciente y del procedimiento</h2>
-			<div class="card">
-				<table class="table">
-					<tbody>
-						<tr>
-							<th>Paciente</th>
-							<td>{{ c.paciente }}</td>
-						</tr>
-						<tr>
-							<th>DNI</th>
-							<td>{{ c.paciente.dni|dash }}</td>
-						</tr>
-						<tr>
-							<th>Edad</th>
-							<td>{{ edad|dash }}</td>
-						</tr>
-						<tr>
-							<th>Médico endoscopista</th>
-							<td>{{ c.medico }}</td>
-						</tr>
-						<tr>
-							<th>Enfermera asistente</th>
-							<td>{{ c.enfermera|dash }}</td>
-						</tr>
-						<tr>
-							<th>Motivo</th>
-							<td class="text-block">{{ c.motivo|dash }}</td>
-						</tr>
-						<tr>
-							<th>Antecedentes</th>
-							<td class="text-block">{{ c.antecedentes|dash }}</td>
-						</tr>
-						<tr>
-							<th>Tipo de sedación</th>
-							<td>{{ c.get_sedacion_display|dash }}</td>
-						</tr>
-						<tr>
-							<th>Fármacos utilizados</th>
-							<td class="text-block">{{ c.farmacos|dash }}</td>
-						</tr>
-					</tbody>
-				</table>
+			<div class="figure-box">
+				<div class="figure-caption">Colonoscopia</div>
+				<svg class="figure-svg" viewBox="0 0 220 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ilustración de colon">
+					<defs>
+						<linearGradient id="colonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+							<stop offset="0%" stop-color="#c78b62"/>
+							<stop offset="100%" stop-color="#8d5336"/>
+						</linearGradient>
+					</defs>
+					<path d="M62 18
+						C30 20, 16 46, 22 66
+						C30 92, 50 96, 66 90
+						C76 86, 82 74, 82 60
+						C82 44, 72 34, 58 32
+						C44 30, 36 38, 34 48
+						C32 60, 38 70, 52 74
+						C70 78, 92 84, 108 100
+						C122 114, 132 126, 154 124
+						C178 122, 194 102, 196 78
+						C198 54, 188 30, 164 22
+						C144 16, 124 18, 112 30"
+						fill="none" stroke="url(#colonGrad)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+					<circle cx="58" cy="58" r="6" fill="#f3d6b9" opacity="0.7"/>
+					<circle cx="103" cy="101" r="6" fill="#f3d6b9" opacity="0.7"/>
+				</svg>
+				<div class="muted-note">Registro endoscópico con hallazgos, impresión diagnóstica y material fotográfico.</div>
 			</div>
 		</div>
 
-		<div class="section">
-			<h2>2. Hallazgos endoscópicos por segmento</h2>
-			<div class="card">
-				{% for segmento in segmentos %}
-					<div class="segment">
-						<div class="segment-head">
-							<div class="segment-title">{{ segmento.get_segmento_display }}</div>
-							<div class="{% if segmento.estado == 'normal' %}state-ok{% else %}state-warn{% endif %}">{{ segmento.get_estado_display }}</div>
+		<div class="image-strip">
+			<div class="image-strip-title">IMÁGENES</div>
+			{% with imagenes|slice:":4" as primeras_imagenes %}
+				<div class="image-grid-top">
+					{% for imagen in primeras_imagenes %}
+						<div class="image-card">
+							<img src="{{ imagen.url }}" alt="{{ imagen.epigrafe|dash }}">
+							<div class="image-caption">{{ imagen.epigrafe|dash }}</div>
 						</div>
-						<div class="text-block">{{ segmento.texto|dash }}</div>
+					{% empty %}
+						<div class="image-card"><div class="image-caption">Sin imágenes</div></div>
+					{% endfor %}
+				</div>
+			{% endwith %}
+			{% if imagenes|slice:"4:5" %}
+				<div class="image-grid-bottom">
+					{% for imagen in imagenes|slice:"4:5" %}
+						<div class="image-card small" style="width: 140px;">
+							<img src="{{ imagen.url }}" alt="{{ imagen.epigrafe|dash }}">
+							<div class="image-caption">{{ imagen.epigrafe|dash }}</div>
+						</div>
+					{% endfor %}
+				</div>
+			{% endif %}
+		</div>
+
+		<div class="bottom-grid">
+			<div class="report-block">
+				<h3>Hallazgos</h3>
+				<div class="block-kv">
+					<div class="block-label">Inspección</div>
+					<div class="block-text">{{ c.insp_pasiva|dash }}{% if c.insp_activa %}<br>{{ c.insp_activa|dash }}{% endif %}</div>
+					<div class="block-label">Tacto rectal</div>
+					<div class="block-text">{{ c.tacto_rectal|dash }}</div>
+					<div class="block-label">Canal anal</div>
+					<div class="block-text">{{ c.canal_anal|dash }}</div>
+					<div class="block-label">Instrumentación</div>
+					<div class="block-text">Cecal: {{ cecal_txt|dash }} · Ileo: {{ ileo_txt|dash }} · Tiempo retiro: {{ c.tiempo_retiro_min|dash }} min</div>
+				</div>
+				<div class="spacer"></div>
+				{% for segmento in segmentos %}
+					<div class="segment-note">
+						<strong>{{ segmento.get_segmento_display }}:</strong>
+						{{ segmento.texto|dash }}
 					</div>
 				{% endfor %}
 			</div>
-		</div>
 
-		<div class="section">
-			<h2>3. Indicadores de calidad</h2>
-			<div class="card">
-				<table class="table">
-					<tbody>
-						<tr>
-							<th>Intubación cecal</th>
-							<td>{{ cecal_txt }}</td>
-						</tr>
-						<tr>
-							<th>Foto-documentación de ciego</th>
-							<td>{{ c.foto_doc_ciego|yn }}</td>
-						</tr>
-						<tr>
-							<th>Ileoscopía distal</th>
-							<td>{{ ileo_txt }}</td>
-						</tr>
-						<tr>
-							<th>Boston colon derecho</th>
-							<td>{{ c.boston_cd|dash }}</td>
-						</tr>
-						<tr>
-							<th>Boston colon transverso</th>
-							<td>{{ c.boston_ct|dash }}</td>
-						</tr>
-						<tr>
-							<th>Boston colon izquierdo</th>
-							<td>{{ c.boston_ci|dash }}</td>
-						</tr>
-						<tr>
-							<th>Boston total</th>
-							<td>{{ boston_total|dash }}</td>
-						</tr>
-						<tr>
-							<th>Preparación adecuada</th>
-							<td>{{ prep_adecuada_txt }}</td>
-						</tr>
-						<tr>
-							<th>Tiempo de retiro (min)</th>
-							<td>{{ c.tiempo_retiro_min|dash }}</td>
-						</tr>
-					</tbody>
-				</table>
-			</div>
-		</div>
+			<div>
+				<div class="report-block" style="margin-bottom: 8px;">
+					<h3>Impresión diagnóstica</h3>
+					<ul class="report-list">
+						{% for diagnostico in diagnosticos %}
+							<li>{{ diagnostico.texto|dash }}</li>
+						{% empty %}
+							<li>—</li>
+						{% endfor %}
+					</ul>
+				</div>
 
-		<div class="section">
-			<h2>4. Inspección anal y tacto rectal</h2>
-			<div class="card">
-				<div class="kv">
-					<div class="label">Inspección pasiva</div>
-					<div class="text-block">{{ c.insp_pasiva|dash }}</div>
-					<div class="label">Inspección activa</div>
-					<div class="text-block">{{ c.insp_activa|dash }}</div>
-					<div class="label">Tacto rectal</div>
-					<div class="text-block">{{ c.tacto_rectal|dash }}</div>
-					<div class="label">Canal anal</div>
-					<div class="text-block">{{ c.canal_anal|dash }}</div>
+				<div class="report-block">
+					<h3>Recomendaciones</h3>
+					<ul class="report-list">
+						{% for sugerencia in sugerencias %}
+							<li>{{ sugerencia.texto|dash }}</li>
+						{% empty %}
+							<li>—</li>
+						{% endfor %}
+					</ul>
 				</div>
 			</div>
-		</div>
 
-		<div class="section">
-			<h2>5. Biopsias</h2>
-			<div class="card">
-				<ul class="list">
-					{% for biopsia in biopsias %}
-						<li>
-							<strong>Frasco {{ biopsia.frasco|dash }}:</strong>
-							{{ biopsia.descripcion|dash }}
-							{% if biopsia.n_lesiones is not None %}
-								<span class="muted">({{ biopsia.n_lesiones }} lesión{{ biopsia.n_lesiones|pluralize }})</span>
-							{% else %}
-								<span class="muted">(—)</span>
-							{% endif %}
-						</li>
-					{% empty %}
-						<li>Sin biopsias.</li>
-					{% endfor %}
-				</ul>
-			</div>
-		</div>
-
-		<div class="section">
-			<h2>6. Diagnósticos</h2>
-			<div class="card">
-				<ul class="list">
-					{% for diagnostico in diagnosticos %}
-						<li>{{ diagnostico.texto|dash }}</li>
-					{% empty %}
-						<li>—</li>
-					{% endfor %}
-				</ul>
-			</div>
-		</div>
-
-		<div class="section">
-			<h2>7. Sugerencias / plan</h2>
-			<div class="card">
-				<ul class="list">
-					{% for sugerencia in sugerencias %}
-						<li>{{ sugerencia.texto|dash }}</li>
-					{% empty %}
-						<li>—</li>
-					{% endfor %}
-				</ul>
-			</div>
-		</div>
-
-		<div class="section">
-			<h2>8. Imágenes endoscópicas</h2>
-			<div class="card">
-				{% if imagenes %}
-					<div class="images">
-						{% for imagen in imagenes %}
-							<div class="image-card">
-								<img src="{{ imagen.url }}" alt="{{ imagen.epigrafe|dash }}">
-								<div class="image-caption">{{ imagen.epigrafe|dash }}</div>
-							</div>
+			<div class="report-block" style="margin-top: 8px;">
+				<h3>Biopsias</h3>
+				{% if biopsias %}
+					<ul class="report-list">
+						{% for biopsia in biopsias %}
+							<li>
+								<strong>Frasco {{ biopsia.frasco|dash }}:</strong>
+								{{ biopsia.descripcion|dash }}
+								{% if biopsia.n_lesiones is not None %}
+									<span class="muted-note">({{ biopsia.n_lesiones }} lesión{{ biopsia.n_lesiones|pluralize }})</span>
+								{% endif %}
+							</li>
 						{% endfor %}
-					</div>
+					</ul>
 				{% else %}
-					<div class="muted">—</div>
+					<div class="muted-note">Sin biopsias.</div>
 				{% endif %}
 			</div>
 		</div>
 
-		<div class="footer">
-			<div class="signature">
-				{{ c.medico.nombre_completo }}<br>
-				<span class="muted">Médico Endoscopista</span>
+		<div class="signature-row">
+			<div class="report-signature">
+				<div class="line">{{ c.medico.nombre_completo }}</div>
+				<div>Médico Gastroenterólogo</div>
+				<div class="muted-note">CMP {{ c.medico.colegiatura|dash }}</div>
 			</div>
 		</div>
 	</div>
