@@ -7,7 +7,6 @@ import { AuthService } from './auth.service';
 import { EndoscopyApiService } from './endoscopy-api.service';
 import { ImageCategoriesPanelComponent } from './image-categories-panel/image-categories-panel.component';
 import { LoginPanelComponent } from './login-panel/login-panel.component';
-import { ProceduresPanelComponent } from './procedures-panel/procedures-panel.component';
 import { SearchableSelectComponent } from './searchable-select/searchable-select.component';
 import { PatientDialogComponent, PatientDialogMode, PatientFormValue } from './patient-dialog/patient-dialog.component';
 import { PersonalDialogComponent, PersonalDialogMode, PersonalFormValue } from './personal-dialog/personal-dialog.component';
@@ -32,11 +31,25 @@ import {
   SugerenciaEDA,
 } from './models';
 
-type TabKey = 'resumen' | 'procedimientos' | 'pacientes' | 'personal' | 'colonoscopias' | 'eda' | 'imagenes';
+type TabKey = 'resumen' | 'pacientes' | 'personal' | 'colonoscopias' | 'eda' | 'imagenes';
+type ProcedureSection = 'imagenes';
+type AttendanceItem = {
+  id: number;
+  fecha: string;
+  createdAt: number;
+};
+
+type AttendanceRow = {
+  patient: Paciente;
+  colonoscopias: AttendanceItem[];
+  edas: AttendanceItem[];
+  total: number;
+  latestAt: number;
+};
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, ReactiveFormsModule, ImageCategoriesPanelComponent, LoginPanelComponent, ProceduresPanelComponent, SearchableSelectComponent, PatientDialogComponent, PersonalDialogComponent],
+  imports: [CommonModule, ReactiveFormsModule, ImageCategoriesPanelComponent, LoginPanelComponent, SearchableSelectComponent, PatientDialogComponent, PersonalDialogComponent],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
@@ -61,7 +74,6 @@ export class App implements OnInit {
 
   protected readonly tabs: Array<{ id: TabKey; label: string; description: string }> = [
     { id: 'resumen', label: 'Resumen', description: 'Métrica rápida y estado general' },
-    { id: 'procedimientos', label: 'Procedimientos', description: 'Catálogo por tipo y carga' },
     { id: 'pacientes', label: 'Pacientes', description: 'Alta y consulta' },
     { id: 'personal', label: 'Personal', description: 'Médicos y enfermería' },
     { id: 'colonoscopias', label: 'Colonoscopías', description: 'Informe y borradores' },
@@ -91,8 +103,19 @@ export class App implements OnInit {
   protected readonly lastEdaId = signal<number | null>(null);
 
   protected readonly selectedImageFile = signal<File | null>(null);
-  protected readonly imageResetToken = signal(0);
+  protected readonly colonoscopiaImageFiles = signal<File[]>([]);
+  protected readonly edaImageFiles = signal<File[]>([]);
   protected readonly selectedDraftFile = signal<File | null>(null);
+  protected readonly summaryPatientId = signal<number | null>(null);
+  protected readonly summaryExpandedPatientId = signal<number | null>(null);
+
+  protected readonly procedureWorkspaceActive = computed(() =>
+    this.activeTab() === 'imagenes'
+  );
+
+  protected readonly procedureSection = computed<ProcedureSection>(() => {
+    return 'imagenes';
+  });
 
   protected readonly isSuperAdmin = computed(() => this.auth.canManageMasterData());
 
@@ -109,6 +132,10 @@ export class App implements OnInit {
       description: `DNI ${patient.dni}`,
     }))
   );
+  protected readonly summaryPatientOptions = computed(() => [
+    { value: null, label: 'Todos los pacientes', description: 'Ver todo el historial' },
+    ...this.patientOptions(),
+  ]);
   protected readonly doctorOptions = computed(() =>
     this.doctors().map((doctor) => ({
       value: doctor.id,
@@ -131,6 +158,68 @@ export class App implements OnInit {
     edas: this.edas().length,
     images: this.images().length,
   }));
+
+  protected readonly attendanceRows = computed<AttendanceRow[]>(() => {
+    const rowsByPatient = new Map<number, AttendanceRow>();
+
+    for (const patient of this.patients()) {
+      rowsByPatient.set(patient.id, {
+        patient,
+        colonoscopias: [],
+        edas: [],
+        total: 0,
+        latestAt: 0,
+      });
+    }
+
+    for (const report of this.colonoscopias()) {
+      const row = rowsByPatient.get(report.paciente);
+      if (!row) {
+        continue;
+      }
+
+      const createdAt = Date.parse(report.creado_en);
+      row.colonoscopias.push({ id: report.id, fecha: report.fecha, createdAt });
+      row.total += 1;
+      row.latestAt = Math.max(row.latestAt, createdAt);
+    }
+
+    for (const report of this.edas()) {
+      const row = rowsByPatient.get(report.paciente);
+      if (!row) {
+        continue;
+      }
+
+      const createdAt = Date.parse(report.creado_en);
+      row.edas.push({ id: report.id, fecha: report.fecha, createdAt });
+      row.total += 1;
+      row.latestAt = Math.max(row.latestAt, createdAt);
+    }
+
+    return Array.from(rowsByPatient.values())
+      .filter((row) => row.total > 0)
+      .map((row) => ({
+        ...row,
+        colonoscopias: row.colonoscopias.slice().sort((left, right) => right.createdAt - left.createdAt),
+        edas: row.edas.slice().sort((left, right) => right.createdAt - left.createdAt),
+      }))
+      .sort((left, right) => right.latestAt - left.latestAt);
+  });
+
+  protected readonly filteredAttendanceRows = computed(() => {
+    const patientId = this.summaryPatientId();
+    if (patientId === null) {
+      return this.attendanceRows();
+    }
+
+    return this.attendanceRows().filter((row) => row.patient.id === patientId);
+  });
+
+  protected readonly summaryAttendanceBadge = computed(() => {
+    const visible = this.filteredAttendanceRows().length;
+    const total = this.attendanceRows().length;
+    return this.summaryPatientId() === null ? `${visible} pacientes con atención` : `${visible} de ${total} pacientes`;
+  });
 
   protected colonoscopiaForm = this.createColonoscopiaForm();
   protected edaForm = this.createEdaForm();
@@ -323,9 +412,15 @@ export class App implements OnInit {
     try {
       const payload = this.buildColonoscopiaPayload();
       const created = await lastValueFrom(this.api.create<Colonoscopia>('colonoscopias', payload));
+      const uploadedImages = await this.uploadProcedureImages('colonoscopia', created.id, this.colonoscopiaImageFiles());
       this.lastColonoscopiaId.set(created.id);
       this.resetColonoscopiaForm();
-      this.statusMessage.set(`Colonoscopía #${created.id} guardada y lista para PDF.`);
+      this.colonoscopiaImageFiles.set([]);
+      this.statusMessage.set(
+        uploadedImages > 0
+          ? `Colonoscopía #${created.id} guardada con ${uploadedImages} imagen(es) y lista para PDF.`
+          : `Colonoscopía #${created.id} guardada y lista para PDF.`
+      );
       this.activeTab.set('colonoscopias');
       await this.refreshAll();
     } catch (error) {
@@ -347,9 +442,15 @@ export class App implements OnInit {
     try {
       const payload = this.buildEdaPayload();
       const created = await lastValueFrom(this.api.create<EDA>('edas', payload));
+      const uploadedImages = await this.uploadProcedureImages('eda', created.id, this.edaImageFiles());
       this.lastEdaId.set(created.id);
       this.resetEdaForm();
-      this.statusMessage.set(`EDA #${created.id} guardada y lista para PDF.`);
+      this.edaImageFiles.set([]);
+      this.statusMessage.set(
+        uploadedImages > 0
+          ? `EDA #${created.id} guardada con ${uploadedImages} imagen(es) y lista para PDF.`
+          : `EDA #${created.id} guardada y lista para PDF.`
+      );
       this.activeTab.set('eda');
       await this.refreshAll();
     } catch (error) {
@@ -357,7 +458,7 @@ export class App implements OnInit {
     }
   }
 
-  protected async uploadImage(): Promise<void> {
+  protected async uploadImage(kind?: 'colonoscopia' | 'eda'): Promise<void> {
     if (!this.auth.canWrite()) {
       this.statusMessage.set('Tu usuario solo tiene permisos de lectura.');
       return;
@@ -371,7 +472,8 @@ export class App implements OnInit {
 
     try {
       const formData = new FormData();
-      formData.append('tipo', this.imageForm.get('tipo')?.value);
+      const uploadKind = kind ?? (this.imageForm.get('tipo')?.value as 'colonoscopia' | 'eda');
+      formData.append('tipo', uploadKind);
       formData.append('object_id', String(this.imageForm.get('object_id')?.value));
       formData.append('archivo', file);
       formData.append('epigrafe', this.imageForm.get('epigrafe')?.value || '');
@@ -381,7 +483,7 @@ export class App implements OnInit {
       this.selectedImageFile.set(null);
       this.resetImageForm();
       this.statusMessage.set('Imagen subida correctamente.');
-      this.activeTab.set('imagenes');
+      this.activeTab.set(uploadKind === 'eda' ? 'eda' : 'colonoscopias');
       await this.refreshAll();
     } catch (error) {
       this.errorMessage.set(this.formatError(error));
@@ -428,6 +530,16 @@ export class App implements OnInit {
     this.selectedImageFile.set(file);
   }
 
+  protected onColonoscopiaImagesSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.colonoscopiaImageFiles.set(Array.from(input.files ?? []));
+  }
+
+  protected onEdaImagesSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.edaImageFiles.set(Array.from(input.files ?? []));
+  }
+
   protected onDraftSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     this.selectedDraftFile.set(input.files?.[0] ?? null);
@@ -435,16 +547,17 @@ export class App implements OnInit {
 
   protected resetColonoscopiaForm(): void {
     this.colonoscopiaForm = this.createColonoscopiaForm();
+    this.colonoscopiaImageFiles.set([]);
   }
 
   protected resetEdaForm(): void {
     this.edaForm = this.createEdaForm();
+    this.edaImageFiles.set([]);
   }
 
   protected resetImageForm(): void {
     this.imageForm.reset({ tipo: 'colonoscopia', object_id: '', epigrafe: '', orden: 0 });
     this.selectedImageFile.set(null);
-    this.imageResetToken.update((currentValue: number) => currentValue + 1);
   }
 
   protected resetDraftImportForm(): void {
@@ -714,22 +827,16 @@ export class App implements OnInit {
   }
 
   protected patientWhatsappUrl(patient: Paciente): string | null {
-    const phone = this.normalizePeruPhone(patient.telefono);
-    if (!phone) {
-      return null;
-    }
-
     const latestReport = this.latestPatientReport(patient.id);
-    const messageParts = [
-      `Hola ${patient.nombres} ${patient.apellidos},`,
-      'le compartimos su informe PDF desde el sistema de endoscopia.',
-    ];
+    return this.buildWhatsappUrl(patient, latestReport ? [latestReport] : []);
+  }
 
-    if (latestReport) {
-      messageParts.push(`PDF: ${this.api.reportUrl(latestReport.kind, latestReport.id)}`);
-    }
+  protected reportWhatsappUrl(patient: Paciente, kind: 'colonoscopia' | 'eda', id: number): string | null {
+    return this.buildWhatsappUrl(patient, [{ kind, id, createdAt: Date.now() }]);
+  }
 
-    return `https://wa.me/51${phone}?text=${encodeURIComponent(messageParts.join(' '))}`;
+  protected allReportsWhatsappUrl(patient: Paciente): string | null {
+    return this.buildWhatsappUrl(patient, this.patientReports(patient.id));
   }
 
   private buildColonoscopiaPayload() {
@@ -864,7 +971,17 @@ export class App implements OnInit {
   }
 
   private latestPatientReport(patientId: number): { kind: 'colonoscopia' | 'eda'; id: number; createdAt: number } | null {
-    const reports = [
+    const reports = this.patientReports(patientId);
+
+    if (!reports.length) {
+      return null;
+    }
+
+    return reports.reduce((latest, current) => (current.createdAt > latest.createdAt ? current : latest));
+  }
+
+  private patientReports(patientId: number): { kind: 'colonoscopia' | 'eda'; id: number; createdAt: number }[] {
+    return [
       ...this.colonoscopias().filter((report) => report.paciente === patientId).map((report) => ({
         kind: 'colonoscopia' as const,
         id: report.id,
@@ -875,17 +992,57 @@ export class App implements OnInit {
         id: report.id,
         createdAt: Date.parse(report.creado_en),
       })),
-    ];
+    ].sort((left, right) => right.createdAt - left.createdAt);
+  }
 
-    if (!reports.length) {
+  private buildWhatsappUrl(
+    patient: Paciente,
+    reports: Array<{ kind: 'colonoscopia' | 'eda'; id: number; createdAt: number }>
+  ): string | null {
+    const phone = this.normalizePeruPhone(patient.telefono);
+    if (!phone) {
       return null;
     }
 
-    return reports.reduce((latest, current) => (current.createdAt > latest.createdAt ? current : latest));
+    const messageParts = [
+      `Hola ${patient.nombres} ${patient.apellidos},`,
+      'le compartimos sus informes PDF desde el sistema de endoscopia.',
+    ];
+
+    if (!reports.length) {
+      messageParts.push('No se encontraron informes disponibles para enviar.');
+    } else if (reports.length === 1) {
+      const report = reports[0];
+      messageParts.push(
+        `PDF ${report.kind === 'colonoscopia' ? 'Colonoscopía' : 'EDA'} #${report.id}: ${this.api.reportUrl(report.kind, report.id)}`
+      );
+    } else {
+      messageParts.push('Informes disponibles:');
+      for (const report of reports) {
+        messageParts.push(
+          `${report.kind === 'colonoscopia' ? 'Colonoscopía' : 'EDA'} #${report.id}: ${this.api.reportUrl(report.kind, report.id)}`
+        );
+      }
+    }
+
+    return `https://wa.me/51${phone}?text=${encodeURIComponent(messageParts.join('\n'))}`;
   }
 
   private today(): string {
     return new Date().toISOString().slice(0, 10);
+  }
+
+  private formatDate(value: string): string {
+    const parsed = Date.parse(value);
+    if (Number.isNaN(parsed)) {
+      return value || '—';
+    }
+
+    return new Intl.DateTimeFormat('es-PE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    }).format(new Date(parsed));
   }
 
   private formatError(error: unknown): string {
@@ -905,8 +1062,90 @@ export class App implements OnInit {
     this.images.set([]);
     this.lastColonoscopiaId.set(null);
     this.lastEdaId.set(null);
+    this.colonoscopiaImageFiles.set([]);
+    this.edaImageFiles.set([]);
     this.statusMessage.set('Inicia sesión para cargar la información del sistema.');
     this.errorMessage.set(null);
     this.activeTab.set('resumen');
+  }
+
+  protected selectedFilesLabel(files: File[]): string {
+    return files.map((file) => file.name).join(', ');
+  }
+
+  protected onSummaryPatientChange(value: unknown): void {
+    if (value === null || value === undefined || value === '') {
+      this.summaryPatientId.set(null);
+      this.summaryExpandedPatientId.set(null);
+      return;
+    }
+
+    const parsed = Number(value);
+    const patientId = Number.isFinite(parsed) ? parsed : null;
+    this.summaryPatientId.set(patientId);
+    this.summaryExpandedPatientId.set(patientId);
+  }
+
+  protected isSummaryRowExpanded(patientId: number): boolean {
+    return this.summaryExpandedPatientId() === patientId;
+  }
+
+  protected toggleSummaryRow(patientId: number): void {
+    this.summaryExpandedPatientId.set(this.summaryExpandedPatientId() === patientId ? null : patientId);
+  }
+
+  protected summaryRowToggleLabel(patientId: number): string {
+    return this.isSummaryRowExpanded(patientId) ? 'Ocultar detalle' : 'Ver detalle';
+  }
+
+  protected summaryRowToggleIcon(patientId: number): string {
+    return this.isSummaryRowExpanded(patientId) ? '−' : '+';
+  }
+
+  protected attendanceCountLabel(count: number): string {
+    return count === 1 ? '1 atención' : `${count} atenciones`;
+  }
+
+  protected formatProcedureDate(value: string): string {
+    return this.formatDate(value);
+  }
+
+  protected formatTimestampDate(value: number): string {
+    if (!Number.isFinite(value)) {
+      return '—';
+    }
+
+    return this.formatDate(new Date(value).toISOString());
+  }
+
+  private async uploadProcedureImages(kind: 'colonoscopia' | 'eda', objectId: number, files: File[]): Promise<number> {
+    let uploadedCount = 0;
+
+    for (const [index, file] of files.entries()) {
+      try {
+        await this.uploadProcedureImage(kind, objectId, file, index);
+        uploadedCount += 1;
+      } catch {
+        // La imagen fallida no bloquea el guardado del procedimiento.
+      }
+    }
+
+    return uploadedCount;
+  }
+
+  private async uploadProcedureImage(
+    kind: 'colonoscopia' | 'eda',
+    objectId: number,
+    file: File,
+    order: number
+  ): Promise<void> {
+    const formData = new FormData();
+    formData.append('tipo', kind);
+    formData.append('object_id', String(objectId));
+    formData.append('archivo', file);
+    formData.append('epigrafe', file.name);
+    formData.append('orden', String(order));
+
+    await lastValueFrom(this.api.uploadImage(formData));
   }
 }

@@ -31,6 +31,7 @@ export interface LoginCredentials {
 }
 
 export interface ProcedureCatalogItem {
+  id: number;
   code: string;
   name: string;
   description: string;

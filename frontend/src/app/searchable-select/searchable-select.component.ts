@@ -31,6 +31,7 @@ export class SearchableSelectComponent implements ControlValueAccessor, OnChange
   @Input() helperText = '';
 
   @Output() readonly openedChange = new EventEmitter<boolean>();
+  @Output() readonly valueChange = new EventEmitter<unknown>();
 
   @HostBinding('class.disabled') get isDisabledHost(): boolean {
     return this.disabled();
@@ -119,6 +120,7 @@ export class SearchableSelectComponent implements ControlValueAccessor, OnChange
     this.selectedValue.set(option.value);
     this.query.set(option.label);
     this.onChange(option.value);
+    this.valueChange.emit(option.value);
     this.isOpen.set(false);
     this.openedChange.emit(false);
     this.onTouched();
@@ -133,6 +135,7 @@ export class SearchableSelectComponent implements ControlValueAccessor, OnChange
     this.selectedValue.set(null);
     this.query.set('');
     this.onChange(null);
+    this.valueChange.emit(null);
     this.isOpen.set(true);
     this.openedChange.emit(true);
   }

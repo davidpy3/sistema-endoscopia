@@ -2,6 +2,15 @@
   <ng-container *ngIf="auth.authenticated(); else loginView">
     <main class="app-shell">
   <section class="hero card">
+    <div class="hero-top" *ngIf="auth.currentUser() as session">
+      <div class="hero-session">
+        <span class="hero-session__label">Sesión iniciada</span>
+        <strong>{{ session.username }}</strong>
+        <small>Tipo de usuario: {{ session.access.role_label }}</small>
+      </div>
+      <button type="button" class="action ghost hero-logout" (click)="logout()">Salir</button>
+    </div>
+
     <div class="hero-copy">
       <p class="eyebrow">Hospital Regional de Tumbes · JAMO II-2</p>
       <h1>Sistema de Endoscopia</h1>
@@ -9,16 +18,11 @@
         Angular conectado a la API Django para pacientes, personal, colonoscopías, EDA, imágenes y
         borradores JSON.
       </p>
-      <p class="hero-text" *ngIf="auth.currentUser() as session">
-        Sesión activa: <strong>{{ session.username }}</strong> · {{ session.access.role_label }}
-      </p>
       <div class="hero-actions">
         <button type="button" class="action primary" [disabled]="!auth.canWrite()" (click)="setTab('colonoscopias')">Nueva colonoscopía</button>
         <button type="button" class="action secondary" [disabled]="!auth.canWrite()" (click)="setTab('eda')">Nueva EDA</button>
         <button *ngIf="isSuperAdmin()" type="button" class="action ghost" (click)="openPatientDialog()">Nuevo paciente</button>
         <button *ngIf="isSuperAdmin()" type="button" class="action ghost" (click)="openPersonalDialog()">Nuevo personal</button>
-        <button type="button" class="action ghost" [disabled]="!auth.canWrite()" (click)="setTab('procedimientos')">Cargar imagen</button>
-        <button type="button" class="action ghost" (click)="logout()">Salir</button>
       </div>
     </div>
 
@@ -61,30 +65,181 @@
       </div>
 
       <div class="summary-grid">
-        <article>
-          <h3>Últimos pacientes</h3>
-          <div class="mini-table">
-            <div class="mini-row" *ngFor="let patient of patients() | slice:0:5">
-              <span>{{ patient.apellidos }}, {{ patient.nombres }}</span>
-              <strong>{{ patient.dni }}</strong>
+        <article class="summary-history">
+          <div class="section-head compact">
+            <div>
+              <h3>Historial por paciente</h3>
+              <p>Cada paciente puede acumular múltiples colonoscopías y EDA; ambas quedan separadas por columna.</p>
             </div>
-            <p class="empty-note" *ngIf="!patients().length">Todavía no hay pacientes cargados.</p>
+            <div class="summary-filter">
+              <app-searchable-select
+                label="Filtrar por paciente"
+                placeholder="Todos los pacientes"
+                [options]="summaryPatientOptions()"
+                helperText="Busca por nombre o DNI para ver un solo paciente."
+                (valueChange)="onSummaryPatientChange($event)"
+              ></app-searchable-select>
+              <span class="history-badge">{{ summaryAttendanceBadge() }}</span>
+            </div>
           </div>
-        </article>
 
-        <article>
-          <h3>Últimos procedimientos</h3>
-          <div class="mini-table">
-            <div class="mini-row" *ngFor="let item of colonoscopias() | slice:0:3">
-              <span>Colonoscopía #{{ item.id }} · {{ item.paciente_nombre }}</span>
-              <button type="button" class="link-button" (click)="openReport('colonoscopia', item.id)">PDF</button>
-            </div>
-            <div class="mini-row" *ngFor="let item of edas() | slice:0:3">
-              <span>EDA #{{ item.id }} · {{ item.paciente_nombre }}</span>
-              <button type="button" class="link-button" (click)="openReport('eda', item.id)">PDF</button>
-            </div>
-            <p class="empty-note" *ngIf="!colonoscopias().length && !edas().length">Todavía no hay procedimientos.</p>
+          <div class="attendance-table" *ngIf="filteredAttendanceRows().length; else emptyAttendance">
+            <table class="attendance-table__grid">
+              <thead>
+                <tr>
+                  <th>Paciente</th>
+                  <th>Colonoscopías</th>
+                  <th>EDA</th>
+                  <th>Total</th>
+                  <th>Detalle</th>
+                </tr>
+              </thead>
+              <tbody>
+                <ng-container *ngFor="let row of filteredAttendanceRows()">
+                  <tr class="attendance-master-row" [class.is-expanded]="isSummaryRowExpanded(row.patient.id)">
+                    <td>
+                      <button type="button" class="attendance-patient-toggle" (click)="toggleSummaryRow(row.patient.id)">
+                        <span class="attendance-patient-name">{{ row.patient.apellidos }}, {{ row.patient.nombres }}</span>
+                        <span class="attendance-patient-meta">DNI {{ row.patient.dni }}</span>
+                      </button>
+                    </td>
+
+                    <td>
+                      <div class="attendance-cell">
+                        <ng-container *ngIf="row.colonoscopias.length; else emptyColonoscopias">
+                          <div class="chip-row attendance-list">
+                            <button
+                              type="button"
+                              class="link-button attendance-chip"
+                              *ngFor="let item of row.colonoscopias"
+                              (click)="openReport('colonoscopia', item.id)"
+                            >
+                              #{{ item.id }} · {{ formatProcedureDate(item.fecha) }}
+                            </button>
+                          </div>
+                        </ng-container>
+                      </div>
+                    </td>
+
+                    <td>
+                      <div class="attendance-cell">
+                        <ng-container *ngIf="row.edas.length; else emptyEdas">
+                          <div class="chip-row attendance-list">
+                            <button
+                              type="button"
+                              class="link-button attendance-chip"
+                              *ngFor="let item of row.edas"
+                              (click)="openReport('eda', item.id)"
+                            >
+                              #{{ item.id }} · {{ formatProcedureDate(item.fecha) }}
+                            </button>
+                          </div>
+                        </ng-container>
+                      </div>
+                    </td>
+
+                    <td>
+                      <span class="attendance-total">{{ attendanceCountLabel(row.total) }}</span>
+                    </td>
+
+                    <td>
+                      <button type="button" class="link-button attendance-toggle" (click)="toggleSummaryRow(row.patient.id)">
+                        <span>{{ summaryRowToggleIcon(row.patient.id) }}</span>
+                        <span>{{ summaryRowToggleLabel(row.patient.id) }}</span>
+                      </button>
+                    </td>
+                  </tr>
+
+                  <tr class="attendance-detail-row" *ngIf="isSummaryRowExpanded(row.patient.id)">
+                    <td [attr.colspan]="5">
+                      <div class="attendance-detail-panel">
+                        <div class="attendance-detail-head">
+                          <div>
+                            <h4>Detalle clínico</h4>
+                            <p>Historial completo del paciente con accesos directos a los PDF.</p>
+                          </div>
+                          <div class="attendance-detail-actions">
+                            <span class="history-badge">Última atención: {{ formatTimestampDate(row.latestAt) }}</span>
+                            <a
+                              *ngIf="allReportsWhatsappUrl(row.patient) as allWhatsappUrl"
+                              class="link-button whatsapp"
+                              [href]="allWhatsappUrl"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              WhatsApp todo
+                            </a>
+                          </div>
+                        </div>
+
+                        <div class="attendance-detail-grid">
+                          <section class="attendance-detail-card">
+                            <h5>Colonoscopías</h5>
+                            <p *ngIf="!row.colonoscopias.length" class="empty-note">Sin colonoscopías.</p>
+                            <ul *ngIf="row.colonoscopias.length" class="attendance-detail-list">
+                              <li *ngFor="let item of row.colonoscopias">
+                                <span>#{{ item.id }} · {{ formatProcedureDate(item.fecha) }}</span>
+                                <span class="attendance-detail-row-actions">
+                                  <button type="button" class="link-button" (click)="openReport('colonoscopia', item.id)">PDF</button>
+                                  <a
+                                    *ngIf="reportWhatsappUrl(row.patient, 'colonoscopia', item.id) as whatsappUrl"
+                                    class="link-button whatsapp"
+                                    [href]="whatsappUrl"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    WhatsApp
+                                  </a>
+                                </span>
+                              </li>
+                            </ul>
+                          </section>
+
+                          <section class="attendance-detail-card">
+                            <h5>EDA</h5>
+                            <p *ngIf="!row.edas.length" class="empty-note">Sin EDA.</p>
+                            <ul *ngIf="row.edas.length" class="attendance-detail-list">
+                              <li *ngFor="let item of row.edas">
+                                <span>#{{ item.id }} · {{ formatProcedureDate(item.fecha) }}</span>
+                                <span class="attendance-detail-row-actions">
+                                  <button type="button" class="link-button" (click)="openReport('eda', item.id)">PDF</button>
+                                  <a
+                                    *ngIf="reportWhatsappUrl(row.patient, 'eda', item.id) as whatsappUrl"
+                                    class="link-button whatsapp"
+                                    [href]="whatsappUrl"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    WhatsApp
+                                  </a>
+                                </span>
+                              </li>
+                            </ul>
+                          </section>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                </ng-container>
+              </tbody>
+            </table>
           </div>
+
+          <ng-template #emptyAttendance>
+            <p class="empty-note" *ngIf="summaryPatientId() === null; else noMatches">Todavía no hay atenciones registradas para mostrar el historial.</p>
+          </ng-template>
+
+          <ng-template #noMatches>
+            <p class="empty-note">No hay atenciones para el paciente seleccionado.</p>
+          </ng-template>
+
+          <ng-template #emptyColonoscopias>
+            <span class="empty-note">Sin colonoscopías</span>
+          </ng-template>
+
+          <ng-template #emptyEdas>
+            <span class="empty-note">Sin EDA</span>
+          </ng-template>
         </article>
       </div>
 
@@ -111,18 +266,6 @@
         </form>
       </section>
     </div>
-
-    <app-procedures-panel
-      *ngIf="activeTab() === 'procedimientos'"
-      [procedures]="procedureCatalog()"
-      [imageForm]="imageForm"
-      [selectedImageFile]="selectedImageFile()"
-      [canWrite]="auth.canWrite()"
-      [resetToken]="imageResetToken()"
-      (imageSelected)="onImageSelected($event)"
-      (uploadRequested)="uploadImage()"
-      (resetRequested)="resetImageForm()"
-    ></app-procedures-panel>
 
     <div class="two-column" *ngIf="activeTab() === 'pacientes'">
       <section class="card form-card">
@@ -198,6 +341,15 @@
             <label class="full-span"><span>Antecedentes</span><textarea rows="3" formControlName="antecedentes"></textarea></label>
             <label class="full-span"><span>Fármacos</span><input type="text" formControlName="farmacos" /></label>
           </div>
+
+          <section class="subsection">
+            <div class="section-head compact"><div><h3>Imágenes del procedimiento</h3><p>Selecciona una o varias imágenes para adjuntarlas al guardar.</p></div></div>
+            <label class="full-span">
+              <span>Archivos</span>
+              <input type="file" accept="image/*" multiple (change)="onColonoscopiaImagesSelected($event)" />
+            </label>
+            <p class="file-name" *ngIf="colonoscopiaImageFiles().length">{{ colonoscopiaImageFiles().length }} imagen(es): {{ selectedFilesLabel(colonoscopiaImageFiles()) }}</p>
+          </section>
 
           <section class="subsection">
             <div class="section-head compact"><div><h3>Segmentos explorados</h3><p>Normal / alterado con texto estructurado por segmento.</p></div></div>
@@ -307,6 +459,15 @@
           </div>
 
           <section class="subsection">
+            <div class="section-head compact"><div><h3>Imágenes del procedimiento</h3><p>Selecciona una o varias imágenes para adjuntarlas al guardar.</p></div></div>
+            <label class="full-span">
+              <span>Archivos</span>
+              <input type="file" accept="image/*" multiple (change)="onEdaImagesSelected($event)" />
+            </label>
+            <p class="file-name" *ngIf="edaImageFiles().length">{{ edaImageFiles().length }} imagen(es): {{ selectedFilesLabel(edaImageFiles()) }}</p>
+          </section>
+
+          <section class="subsection">
             <div class="section-head compact"><div><h3>Segmentos explorados</h3><p>Fondo y Antro incluyen subcampos condicionales.</p></div></div>
             <div class="segment-card" *ngFor="let group of edaSegmentGroups; let index = index" [formGroup]="group">
               <div class="segment-head-row"><strong>{{ edaSegmentsData[index].label }}</strong><span class="segment-key">{{ edaSegmentsData[index].key }}</span></div>
@@ -386,7 +547,7 @@
           <div>
             <p class="eyebrow">Consulta</p>
             <h2>Galería de imágenes</h2>
-            <p>La carga de imágenes ahora vive dentro de Procedimientos.</p>
+            <p>La carga de imágenes se hace dentro de cada procedimiento clínico.</p>
           </div>
         </div>
       </section>
