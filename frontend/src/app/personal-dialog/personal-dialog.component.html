@@ -3,7 +3,7 @@
     <div class="modal-head">
       <div>
         <p class="eyebrow">Alta</p>
-        <h2 id="personal-modal-title">Nuevo personal</h2>
+        <h2 id="personal-modal-title">{{ title }}</h2>
       </div>
       <button type="button" class="modal-close" (click)="close()">×</button>
     </div>
@@ -14,7 +14,7 @@
       <label><span>Colegiatura</span><input type="text" formControlName="colegiatura" /></label>
       <label><span>Activo</span><select formControlName="activo"><option [ngValue]="true">Sí</option><option [ngValue]="false">No</option></select></label>
       <div class="form-actions full-span modal-actions">
-        <button type="submit" class="action primary">Guardar personal</button>
+        <button *ngIf="!isReadOnly" type="submit" class="action primary">{{ submitLabel }}</button>
         <button type="button" class="action ghost" (click)="reset()">Limpiar</button>
         <button type="button" class="action ghost" (click)="close()">Cerrar</button>
       </div>

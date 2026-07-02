@@ -1,0 +1,73 @@
+:host {
+  display: block;
+}
+
+.procedures-shell {
+  padding: 22px;
+}
+
+.procedure-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.procedure-tab {
+  display: grid;
+  gap: 3px;
+  min-width: 158px;
+  text-align: left;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: #edf7f6;
+  border-radius: 16px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.procedure-tab span {
+  font-weight: 800;
+}
+
+.procedure-tab small {
+  color: rgba(223, 237, 240, 0.72);
+}
+
+.procedure-tab.active {
+  background: linear-gradient(135deg, rgba(28, 155, 139, 0.24), rgba(245, 180, 84, 0.18));
+  border-color: rgba(99, 215, 196, 0.4);
+}
+
+.procedure-tab:hover {
+  transform: translateY(-1px);
+}
+
+.procedure-catalog-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  margin-bottom: 20px;
+}
+
+.upload-section {
+  margin-top: 4px;
+  padding: 18px;
+}
+
+.upload-context {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+.upload-form {
+  margin-top: 12px;
+}
+
+.empty-note {
+  margin: 0 0 20px;
+  color: rgba(215, 228, 233, 0.68);
+}

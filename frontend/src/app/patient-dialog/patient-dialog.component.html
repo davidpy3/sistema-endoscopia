@@ -3,7 +3,7 @@
     <div class="modal-head">
       <div>
         <p class="eyebrow">Alta</p>
-        <h2 id="patient-modal-title">Nuevo paciente</h2>
+        <h2 id="patient-modal-title">{{ title }}</h2>
       </div>
       <button type="button" class="modal-close" (click)="close()">×</button>
     </div>
@@ -14,9 +14,9 @@
       <label><span>DNI</span><input type="text" maxlength="8" formControlName="dni" /></label>
       <label><span>Fecha de nacimiento</span><input type="date" formControlName="fecha_nacimiento" /></label>
       <label><span>Sexo</span><select formControlName="sexo"><option *ngFor="let option of sexoOptions" [ngValue]="option.value">{{ option.label }}</option></select></label>
-      <label><span>Teléfono</span><input type="text" formControlName="telefono" /></label>
+      <label><span>Teléfono Perú (+51)</span><input type="tel" inputmode="numeric" maxlength="9" placeholder="9XXXXXXXX" formControlName="telefono" /></label>
       <div class="form-actions full-span modal-actions">
-        <button type="submit" class="action primary">Guardar paciente</button>
+        <button *ngIf="!isReadOnly" type="submit" class="action primary">{{ submitLabel }}</button>
         <button type="button" class="action ghost" (click)="reset()">Limpiar</button>
         <button type="button" class="action ghost" (click)="close()">Cerrar</button>
       </div>

@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, Input, computed, signal } from '@an
 
 import { ImagenEndoscopica } from '../models';
 
-type ImageCategory = 'all' | 'colonoscopia' | 'eda';
+type ImageCategory = 'all' | 'colonoscopia' | 'eda' | 'endoscopia' | 'laparoscopia' | 'cpre' | 'otros';
 
 @Component({
   selector: 'app-image-categories-panel',
@@ -27,6 +27,10 @@ export class ImageCategoriesPanelComponent {
     { id: 'all' as const, label: 'Todas' },
     { id: 'colonoscopia' as const, label: 'Colonoscopía' },
     { id: 'eda' as const, label: 'EDA' },
+    { id: 'endoscopia' as const, label: 'Endoscopia' },
+    { id: 'laparoscopia' as const, label: 'Laparoscopía' },
+    { id: 'cpre' as const, label: 'CPRE' },
+    { id: 'otros' as const, label: 'Otros' },
   ];
 
   protected readonly filteredImages = computed(() => {
@@ -36,7 +40,7 @@ export class ImageCategoriesPanelComponent {
       return images;
     }
 
-    return images.filter((image) => image.tipo === activeCategory);
+    return images.filter((image) => image.tipo_display?.toLowerCase() === activeCategory);
   });
 
   protected selectCategory(category: ImageCategory): void {

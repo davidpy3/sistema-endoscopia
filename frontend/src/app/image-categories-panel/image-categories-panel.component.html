@@ -3,7 +3,7 @@
     <div>
       <p class="eyebrow">Consulta</p>
       <h2>Galería de imágenes</h2>
-      <p class="panel-copy">Pestañas separadas para revisar colonoscopía y EDA por categoría.</p>
+      <p class="panel-copy">Pestañas separadas para revisar imágenes por tipo de procedimiento.</p>
     </div>
     <div class="image-count">{{ filteredImages().length }} imágenes</div>
   </div>
@@ -32,6 +32,6 @@
   </div>
 
   <ng-template #emptyState>
-    <p class="empty-note">No hay imágenes para esta categoría.</p>
+    <p class="empty-note">No hay imágenes para este procedimiento.</p>
   </ng-template>
 </section>

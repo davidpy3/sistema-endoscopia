@@ -1,0 +1,79 @@
+<section class="procedures-shell card">
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">Catálogo</p>
+      <h2>Procedimientos gastroenterológicos</h2>
+      <p>Los procedimientos están agrupados por tipo y la carga de imágenes se hace en este mismo espacio.</p>
+    </div>
+  </div>
+
+  <nav class="procedure-tabs" aria-label="Tipos de procedimiento">
+    <button
+      *ngFor="let tab of tabs()"
+      type="button"
+      class="procedure-tab"
+      [class.active]="activeCategory() === tab.id"
+      (click)="selectCategory(tab.id)"
+    >
+      <span>{{ tab.label }}</span>
+      <small>{{ tab.description }}</small>
+    </button>
+  </nav>
+
+  <div class="procedure-catalog-grid" *ngIf="filteredProcedures().length; else emptyState">
+    <article class="procedure-catalog-card" *ngFor="let item of filteredProcedures()">
+      <div class="catalog-head">
+        <span class="chip">{{ item.code }}</span>
+        <strong>{{ item.name }}</strong>
+      </div>
+      <p>{{ item.description }}</p>
+      <small>{{ item.scope }}</small>
+    </article>
+  </div>
+
+  <ng-template #emptyState>
+    <p class="empty-note">No hay procedimientos para esta categoría.</p>
+  </ng-template>
+
+  <section class="upload-section card" *ngIf="imageForm as uploadForm">
+    <div class="section-head compact">
+      <div>
+        <h3>Subir imagen endoscópica</h3>
+        <p>La imagen toma el tipo desde la pestaña activa del procedimiento.</p>
+      </div>
+    </div>
+
+    <div class="upload-context" *ngIf="canUploadImages(); else disabledUpload">
+      <span class="chip">{{ uploadProcedureLabel() }}</span>
+      <p class="empty-note">Usa el ID del procedimiento para adjuntar las imágenes.</p>
+    </div>
+
+    <ng-template #disabledUpload>
+      <p class="empty-note">La carga de imágenes solo está habilitada en Colonoscopía y EDA.</p>
+    </ng-template>
+
+    <form *ngIf="canUploadImages()" [formGroup]="uploadForm" (ngSubmit)="submitImage()" class="form-grid upload-form">
+      <label>
+        <span>ID del procedimiento</span>
+        <input type="number" min="1" formControlName="object_id" />
+      </label>
+      <label class="full-span">
+        <span>Archivo</span>
+        <input type="file" #fileInput accept="image/*" (change)="onImageFileChange($event)" />
+      </label>
+      <p class="file-name full-span" *ngIf="selectedImageFile as imageFile">{{ imageFile.name }}</p>
+      <label class="full-span">
+        <span>Epígrafe</span>
+        <input type="text" formControlName="epigrafe" />
+      </label>
+      <label>
+        <span>Orden</span>
+        <input type="number" min="0" formControlName="orden" />
+      </label>
+      <div class="form-actions full-span">
+        <button type="submit" class="action primary" [disabled]="!canWrite">Subir</button>
+        <button type="button" class="action ghost" (click)="resetImage()">Limpiar</button>
+      </div>
+    </form>
+  </section>
+</section>

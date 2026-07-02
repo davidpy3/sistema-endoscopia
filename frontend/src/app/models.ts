@@ -5,6 +5,38 @@ export interface ApiListResponse<T> {
   results: T[];
 }
 
+export interface AuthAccess {
+  role: 'leer' | 'escribir' | 'todo' | 'sin_acceso' | 'anon';
+  role_label: string;
+  groups: string[];
+  can_read: boolean;
+  can_write: boolean;
+  can_delete: boolean;
+}
+
+export interface AuthSessionUser {
+  id: number;
+  username: string;
+  first_name: string;
+  last_name: string;
+  is_superuser: boolean;
+  is_staff: boolean;
+  groups: string[];
+  access: AuthAccess;
+}
+
+export interface LoginCredentials {
+  username: string;
+  password: string;
+}
+
+export interface ProcedureCatalogItem {
+  code: string;
+  name: string;
+  description: string;
+  scope: string;
+}
+
 export interface Paciente {
   id: number;
   nombres: string;

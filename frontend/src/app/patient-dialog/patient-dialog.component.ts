@@ -1,6 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, EventEmitter, Output, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, inject } from '@angular/core';
 import { ReactiveFormsModule, UntypedFormBuilder, Validators } from '@angular/forms';
+
+import { Paciente } from '../models';
+
+export type PatientDialogMode = 'create' | 'edit' | 'view';
 
 export interface PatientFormValue {
   nombres: string;
@@ -22,6 +26,9 @@ export interface PatientFormValue {
 export class PatientDialogComponent {
   private readonly fb = inject(UntypedFormBuilder);
 
+  @Input() initialData: Paciente | null = null;
+  @Input() mode: PatientDialogMode = 'create';
+
   @Output() readonly submitted = new EventEmitter<PatientFormValue>();
   @Output() readonly closed = new EventEmitter<void>();
 
@@ -40,20 +47,81 @@ export class PatientDialogComponent {
     telefono: [''],
   });
 
+  ngOnChanges(_: SimpleChanges): void {
+    this.syncForm();
+  }
+
+  protected get isReadOnly(): boolean {
+    return this.mode === 'view';
+  }
+
+  protected get title(): string {
+    if (this.mode === 'edit') {
+      return 'Editar paciente';
+    }
+    if (this.mode === 'view') {
+      return 'Datos del paciente';
+    }
+    return 'Nuevo paciente';
+  }
+
+  protected get submitLabel(): string {
+    return this.mode === 'edit' ? 'Guardar cambios' : 'Guardar paciente';
+  }
+
+  protected get actionLabel(): string {
+    return this.mode === 'edit' ? 'Editar' : 'Ver';
+  }
+
   protected submit(): void {
-    if (this.form.invalid) {
+    if (this.isReadOnly || this.form.invalid) {
       return;
     }
 
-    this.submitted.emit(this.form.getRawValue() as PatientFormValue);
-    this.form.reset({ nombres: '', apellidos: '', dni: '', fecha_nacimiento: '', sexo: '', telefono: '' });
+    const rawValue = this.form.getRawValue() as PatientFormValue;
+    this.submitted.emit({
+      ...rawValue,
+      telefono: this.normalizePeruPhone(rawValue.telefono),
+    });
+    if (this.mode === 'create') {
+      this.form.reset({ nombres: '', apellidos: '', dni: '', fecha_nacimiento: '', sexo: '', telefono: '' });
+    }
   }
 
   protected reset(): void {
-    this.form.reset({ nombres: '', apellidos: '', dni: '', fecha_nacimiento: '', sexo: '', telefono: '' });
+    this.syncForm();
   }
 
   protected close(): void {
     this.closed.emit();
+  }
+
+  private syncForm(): void {
+    const value = this.initialData;
+    const defaults = {
+      nombres: value?.nombres ?? '',
+      apellidos: value?.apellidos ?? '',
+      dni: value?.dni ?? '',
+      fecha_nacimiento: value?.fecha_nacimiento ?? '',
+      sexo: value?.sexo ?? '',
+      telefono: value?.telefono ?? '',
+    };
+
+    this.form.reset(defaults);
+    if (this.isReadOnly) {
+      this.form.disable({ emitEvent: false });
+    } else {
+      this.form.enable({ emitEvent: false });
+    }
+  }
+
+  private normalizePeruPhone(value: string): string {
+    const digits = String(value ?? '').replace(/\D+/g, '');
+    if (!digits) {
+      return '';
+    }
+
+    const normalized = digits.startsWith('51') ? digits.slice(2) : digits;
+    return normalized.startsWith('9') && normalized.length === 9 ? normalized : '';
   }
 }

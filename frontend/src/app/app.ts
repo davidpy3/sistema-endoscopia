@@ -1,12 +1,16 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { ReactiveFormsModule, UntypedFormArray, UntypedFormBuilder, UntypedFormGroup, Validators } from '@angular/forms';
 import { forkJoin, lastValueFrom } from 'rxjs';
 
+import { AuthService } from './auth.service';
 import { EndoscopyApiService } from './endoscopy-api.service';
 import { ImageCategoriesPanelComponent } from './image-categories-panel/image-categories-panel.component';
-import { PatientDialogComponent, PatientFormValue } from './patient-dialog/patient-dialog.component';
-import { PersonalDialogComponent, PersonalFormValue } from './personal-dialog/personal-dialog.component';
+import { LoginPanelComponent } from './login-panel/login-panel.component';
+import { ProceduresPanelComponent } from './procedures-panel/procedures-panel.component';
+import { SearchableSelectComponent } from './searchable-select/searchable-select.component';
+import { PatientDialogComponent, PatientDialogMode, PatientFormValue } from './patient-dialog/patient-dialog.component';
+import { PersonalDialogComponent, PersonalDialogMode, PersonalFormValue } from './personal-dialog/personal-dialog.component';
 import {
   BiopsiaColonoscopia,
   BiopsiaEDA,
@@ -20,6 +24,7 @@ import {
   ImagenEndoscopica,
   Paciente,
   Personal,
+  ProcedureCatalogItem,
   PILORO_OPTIONS,
   SegmentOption,
   SEDATION_OPTIONS,
@@ -27,36 +32,57 @@ import {
   SugerenciaEDA,
 } from './models';
 
-type TabKey = 'resumen' | 'pacientes' | 'personal' | 'colonoscopias' | 'eda' | 'imagenes';
+type TabKey = 'resumen' | 'procedimientos' | 'pacientes' | 'personal' | 'colonoscopias' | 'eda' | 'imagenes';
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, ReactiveFormsModule, ImageCategoriesPanelComponent, PatientDialogComponent, PersonalDialogComponent],
+  imports: [CommonModule, ReactiveFormsModule, ImageCategoriesPanelComponent, LoginPanelComponent, ProceduresPanelComponent, SearchableSelectComponent, PatientDialogComponent, PersonalDialogComponent],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
 export class App implements OnInit {
+  protected readonly auth = inject(AuthService);
   private readonly api = inject(EndoscopyApiService);
   private readonly fb = inject(UntypedFormBuilder);
 
+  constructor() {
+    effect(() => {
+      if (this.auth.bootstrapping()) {
+        return;
+      }
+
+      if (this.auth.authenticated()) {
+        void this.refreshAll();
+      } else {
+        this.resetWorkspaceState();
+      }
+    });
+  }
+
   protected readonly tabs: Array<{ id: TabKey; label: string; description: string }> = [
     { id: 'resumen', label: 'Resumen', description: 'Métrica rápida y estado general' },
+    { id: 'procedimientos', label: 'Procedimientos', description: 'Catálogo por tipo y carga' },
     { id: 'pacientes', label: 'Pacientes', description: 'Alta y consulta' },
     { id: 'personal', label: 'Personal', description: 'Médicos y enfermería' },
     { id: 'colonoscopias', label: 'Colonoscopías', description: 'Informe y borradores' },
     { id: 'eda', label: 'EDA', description: 'Informe y borradores' },
-    { id: 'imagenes', label: 'Imágenes', description: 'Carga y consulta' },
+    { id: 'imagenes', label: 'Imágenes', description: 'Galería por categoría' },
   ];
 
   protected readonly activeTab = signal<TabKey>('resumen');
   protected readonly patientDialogOpen = signal(false);
+  protected readonly patientDialogMode = signal<PatientDialogMode>('create');
+  protected readonly selectedPatient = signal<Paciente | null>(null);
   protected readonly personalDialogOpen = signal(false);
+  protected readonly personalDialogMode = signal<PersonalDialogMode>('create');
+  protected readonly selectedPersonal = signal<Personal | null>(null);
   protected readonly loading = signal(false);
   protected readonly statusMessage = signal('Sincroniza con el backend para empezar.');
   protected readonly errorMessage = signal<string | null>(null);
 
   protected readonly patients = signal<Paciente[]>([]);
   protected readonly personnel = signal<Personal[]>([]);
+  protected readonly procedureCatalog = signal<ProcedureCatalogItem[]>([]);
   protected readonly colonoscopias = signal<Colonoscopia[]>([]);
   protected readonly edas = signal<EDA[]>([]);
   protected readonly images = signal<ImagenEndoscopica[]>([]);
@@ -65,7 +91,10 @@ export class App implements OnInit {
   protected readonly lastEdaId = signal<number | null>(null);
 
   protected readonly selectedImageFile = signal<File | null>(null);
+  protected readonly imageResetToken = signal(0);
   protected readonly selectedDraftFile = signal<File | null>(null);
+
+  protected readonly isSuperAdmin = computed(() => this.auth.canManageMasterData());
 
   protected readonly doctors = computed(() =>
     this.personnel().filter((person) => person.rol === 'medico' && person.activo)
@@ -73,9 +102,31 @@ export class App implements OnInit {
   protected readonly nurses = computed(() =>
     this.personnel().filter((person) => person.rol === 'enfermera' && person.activo)
   );
+  protected readonly patientOptions = computed(() =>
+    this.patients().map((patient) => ({
+      value: patient.id,
+      label: `${patient.apellidos}, ${patient.nombres}`,
+      description: `DNI ${patient.dni}`,
+    }))
+  );
+  protected readonly doctorOptions = computed(() =>
+    this.doctors().map((doctor) => ({
+      value: doctor.id,
+      label: doctor.nombre_completo,
+      description: doctor.colegiatura || 'Médico',
+    }))
+  );
+  protected readonly nurseOptions = computed(() =>
+    this.nurses().map((nurse) => ({
+      value: nurse.id,
+      label: nurse.nombre_completo,
+      description: nurse.colegiatura || 'Enfermera',
+    }))
+  );
   protected readonly stats = computed(() => ({
     patients: this.patients().length,
     personnel: this.personnel().length,
+    procedures: this.procedureCatalog().length,
     colonoscopias: this.colonoscopias().length,
     edas: this.edas().length,
     images: this.images().length,
@@ -95,7 +146,7 @@ export class App implements OnInit {
   protected readonly edaSegmentsData = EDA_SEGMENTS;
 
   async ngOnInit(): Promise<void> {
-    await this.refreshAll();
+    await this.auth.bootstrap();
   }
 
   protected setTab(tab: TabKey): void {
@@ -103,22 +154,87 @@ export class App implements OnInit {
   }
 
   protected openPatientDialog(): void {
+    if (!this.isSuperAdmin()) {
+      return;
+    }
+
+    this.selectedPatient.set(null);
+    this.patientDialogMode.set('create');
+    this.patientDialogOpen.set(true);
+  }
+
+  protected viewPatient(patient: Paciente): void {
+    if (!this.isSuperAdmin()) {
+      return;
+    }
+
+    this.selectedPatient.set(patient);
+    this.patientDialogMode.set('view');
+    this.patientDialogOpen.set(true);
+  }
+
+  protected editPatient(patient: Paciente): void {
+    if (!this.isSuperAdmin()) {
+      return;
+    }
+
+    this.selectedPatient.set(patient);
+    this.patientDialogMode.set('edit');
     this.patientDialogOpen.set(true);
   }
 
   protected closePatientDialog(): void {
     this.patientDialogOpen.set(false);
+    this.selectedPatient.set(null);
+    this.patientDialogMode.set('create');
   }
 
   protected openPersonalDialog(): void {
+    if (!this.isSuperAdmin()) {
+      return;
+    }
+
+    this.selectedPersonal.set(null);
+    this.personalDialogMode.set('create');
     this.personalDialogOpen.set(true);
+  }
+
+  protected viewPersonal(personal: Personal): void {
+    if (!this.isSuperAdmin()) {
+      return;
+    }
+
+    this.selectedPersonal.set(personal);
+    this.personalDialogMode.set('view');
+    this.personalDialogOpen.set(true);
+  }
+
+  protected editPersonal(personal: Personal): void {
+    if (!this.isSuperAdmin()) {
+      return;
+    }
+
+    this.selectedPersonal.set(personal);
+    this.personalDialogMode.set('edit');
+    this.personalDialogOpen.set(true);
+  }
+
+  protected async logout(): Promise<void> {
+    await this.auth.logout();
   }
 
   protected closePersonalDialog(): void {
     this.personalDialogOpen.set(false);
+    this.selectedPersonal.set(null);
+    this.personalDialogMode.set('create');
   }
 
   protected async refreshAll(): Promise<void> {
+    if (!this.auth.canRead()) {
+      this.statusMessage.set('Inicia sesión para ver y sincronizar los datos.');
+      return;
+    }
+
     this.loading.set(true);
     this.errorMessage.set(null);
 
@@ -127,6 +243,7 @@ export class App implements OnInit {
         forkJoin({
           patients: this.api.loadPatients(),
           personnel: this.api.loadPersonnel(),
+          procedures: this.api.loadProcedureCatalog(),
           colonoscopias: this.api.loadColonoscopias(),
           edas: this.api.loadEdas(),
           images: this.api.loadImages(),
@@ -135,6 +252,7 @@ export class App implements OnInit {
 
       this.patients.set(payload.patients);
       this.personnel.set(payload.personnel);
+      this.procedureCatalog.set(payload.procedures);
       this.colonoscopias.set(payload.colonoscopias);
       this.edas.set(payload.edas);
       this.images.set(payload.images);
@@ -148,9 +266,20 @@ export class App implements OnInit {
   }
 
   protected async savePatient(payload: PatientFormValue): Promise<void> {
+    if (!this.isSuperAdmin()) {
+      this.statusMessage.set('Solo el superadministrador puede gestionar pacientes.');
+      return;
+    }
+
     try {
-      await lastValueFrom(this.api.create<Paciente>('pacientes', payload));
-      this.statusMessage.set('Paciente registrado correctamente.');
+      const selectedPatient = this.selectedPatient();
+      if (this.patientDialogMode() === 'edit' && selectedPatient) {
+        await lastValueFrom(this.api.update<Paciente>('pacientes', selectedPatient.id, payload));
+        this.statusMessage.set('Paciente actualizado correctamente.');
+      } else {
+        await lastValueFrom(this.api.create<Paciente>('pacientes', payload));
+        this.statusMessage.set('Paciente registrado correctamente.');
+      }
       this.closePatientDialog();
       await this.refreshAll();
     } catch (error) {
@@ -159,9 +288,20 @@ export class App implements OnInit {
   }
 
   protected async savePersonal(payload: PersonalFormValue): Promise<void> {
+    if (!this.isSuperAdmin()) {
+      this.statusMessage.set('Solo el superadministrador puede gestionar personal.');
+      return;
+    }
+
     try {
-      await lastValueFrom(this.api.create<Personal>('personal', payload));
-      this.statusMessage.set('Personal registrado correctamente.');
+      const selectedPersonal = this.selectedPersonal();
+      if (this.personalDialogMode() === 'edit' && selectedPersonal) {
+        await lastValueFrom(this.api.update<Personal>('personal', selectedPersonal.id, payload));
+        this.statusMessage.set('Personal actualizado correctamente.');
+      } else {
+        await lastValueFrom(this.api.create<Personal>('personal', payload));
+        this.statusMessage.set('Personal registrado correctamente.');
+      }
       this.closePersonalDialog();
       await this.refreshAll();
     } catch (error) {
@@ -170,6 +310,11 @@ export class App implements OnInit {
   }
 
   protected async saveColonoscopia(): Promise<void> {
+    if (!this.auth.canWrite()) {
+      this.statusMessage.set('Tu usuario solo tiene permisos de lectura.');
+      return;
+    }
+
     if (this.colonoscopiaForm.invalid) {
       this.statusMessage.set('Completa paciente, médico y fecha para registrar la colonoscopía.');
       return;
@@ -189,6 +334,11 @@ export class App implements OnInit {
   }
 
   protected async saveEda(): Promise<void> {
+    if (!this.auth.canWrite()) {
+      this.statusMessage.set('Tu usuario solo tiene permisos de lectura.');
+      return;
+    }
+
     if (this.edaForm.invalid) {
       this.statusMessage.set('Completa paciente, médico y fecha para registrar la EDA.');
       return;
@@ -208,6 +358,11 @@ export class App implements OnInit {
   }
 
   protected async uploadImage(): Promise<void> {
+    if (!this.auth.canWrite()) {
+      this.statusMessage.set('Tu usuario solo tiene permisos de lectura.');
+      return;
+    }
+
     const file = this.selectedImageFile();
     if (!file || this.imageForm.invalid) {
       this.statusMessage.set('Selecciona una imagen y completa el destino antes de subirla.');
@@ -234,6 +389,11 @@ export class App implements OnInit {
   }
 
   protected async importDraft(): Promise<void> {
+    if (!this.auth.canWrite()) {
+      this.statusMessage.set('Tu usuario solo tiene permisos de lectura.');
+      return;
+    }
+
     const file = this.selectedDraftFile();
     const kind = this.draftImportForm.get('tipo')?.value as 'colonoscopia' | 'eda';
 
@@ -264,9 +424,8 @@ export class App implements OnInit {
     }
   }
 
-  protected onImageSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    this.selectedImageFile.set(input.files?.[0] ?? null);
+  protected onImageSelected(file: File | null): void {
+    this.selectedImageFile.set(file);
   }
 
   protected onDraftSelected(event: Event): void {
@@ -285,6 +444,7 @@ export class App implements OnInit {
   protected resetImageForm(): void {
     this.imageForm.reset({ tipo: 'colonoscopia', object_id: '', epigrafe: '', orden: 0 });
     this.selectedImageFile.set(null);
+    this.imageResetToken.update((currentValue: number) => currentValue + 1);
   }
 
   protected resetDraftImportForm(): void {
@@ -544,6 +704,34 @@ export class App implements OnInit {
     });
   }
 
+  protected formatPeruPhone(phone: string): string {
+    const normalized = this.normalizePeruPhone(phone);
+    if (!normalized) {
+      return '—';
+    }
+
+    return `+51 ${normalized.slice(0, 3)} ${normalized.slice(3, 6)} ${normalized.slice(6)}`;
+  }
+
+  protected patientWhatsappUrl(patient: Paciente): string | null {
+    const phone = this.normalizePeruPhone(patient.telefono);
+    if (!phone) {
+      return null;
+    }
+
+    const latestReport = this.latestPatientReport(patient.id);
+    const messageParts = [
+      `Hola ${patient.nombres} ${patient.apellidos},`,
+      'le compartimos su informe PDF desde el sistema de endoscopia.',
+    ];
+
+    if (latestReport) {
+      messageParts.push(`PDF: ${this.api.reportUrl(latestReport.kind, latestReport.id)}`);
+    }
+
+    return `https://wa.me/51${phone}?text=${encodeURIComponent(messageParts.join(' '))}`;
+  }
+
   private buildColonoscopiaPayload() {
     const raw = this.colonoscopiaForm.getRawValue();
     return {
@@ -665,6 +853,37 @@ export class App implements OnInit {
     return value === true || value === 'true';
   }
 
+  private normalizePeruPhone(value: unknown): string {
+    const digits = String(value ?? '').replace(/\D+/g, '');
+    if (!digits) {
+      return '';
+    }
+
+    const normalized = digits.startsWith('51') ? digits.slice(2) : digits;
+    return normalized.length === 9 && normalized.startsWith('9') ? normalized : '';
+  }
+
+  private latestPatientReport(patientId: number): { kind: 'colonoscopia' | 'eda'; id: number; createdAt: number } | null {
+    const reports = [
+      ...this.colonoscopias().filter((report) => report.paciente === patientId).map((report) => ({
+        kind: 'colonoscopia' as const,
+        id: report.id,
+        createdAt: Date.parse(report.creado_en),
+      })),
+      ...this.edas().filter((report) => report.paciente === patientId).map((report) => ({
+        kind: 'eda' as const,
+        id: report.id,
+        createdAt: Date.parse(report.creado_en),
+      })),
+    ];
+
+    if (!reports.length) {
+      return null;
+    }
+
+    return reports.reduce((latest, current) => (current.createdAt > latest.createdAt ? current : latest));
+  }
+
   private today(): string {
     return new Date().toISOString().slice(0, 10);
   }
@@ -675,5 +894,19 @@ export class App implements OnInit {
     }
 
     return 'Ocurrió un error inesperado.';
+  }
+
+  private resetWorkspaceState(): void {
+    this.patients.set([]);
+    this.personnel.set([]);
+    this.procedureCatalog.set([]);
+    this.colonoscopias.set([]);
+    this.edas.set([]);
+    this.images.set([]);
+    this.lastColonoscopiaId.set(null);
+    this.lastEdaId.set(null);
+    this.statusMessage.set('Inicia sesión para cargar la información del sistema.');
+    this.errorMessage.set(null);
+    this.activeTab.set('resumen');
   }
 }

@@ -1,0 +1,43 @@
+<div class="searchable-select">
+  <span class="searchable-select__label" *ngIf="label">{{ label }}</span>
+
+  <div class="searchable-select__control" [class.open]="isOpen()" [class.disabled]="disabled()">
+    <input
+      type="text"
+      class="searchable-select__input"
+      [value]="query()"
+      [placeholder]="placeholder"
+      [disabled]="disabled()"
+      (focus)="open()"
+      (input)="onInput($event)"
+      (blur)="close()"
+    />
+    <button
+      *ngIf="query() && !disabled()"
+      type="button"
+      class="searchable-select__clear"
+      (mousedown)="$event.preventDefault()"
+      (click)="clearSelection($event)"
+      aria-label="Limpiar selección"
+    >
+      ×
+    </button>
+  </div>
+
+  <div class="searchable-select__panel" *ngIf="isOpen() && !disabled()">
+    <button
+      type="button"
+      class="searchable-select__option"
+      *ngFor="let option of filteredOptions(); trackBy: trackByValue"
+      (mousedown)="$event.preventDefault()"
+      (click)="selectOption(option)"
+    >
+      <strong>{{ option.label }}</strong>
+      <small *ngIf="option.description">{{ option.description }}</small>
+    </button>
+
+    <p class="searchable-select__empty" *ngIf="!filteredOptions().length">{{ noResultsText }}</p>
+  </div>
+
+  <p class="searchable-select__helper" *ngIf="helperText">{{ helperText }}</p>
+</div>

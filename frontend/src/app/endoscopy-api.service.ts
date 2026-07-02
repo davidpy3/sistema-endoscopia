@@ -7,6 +7,7 @@ import {
   Colonoscopia,
   EDA,
   ImagenEndoscopica,
+  ProcedureCatalogItem,
   Paciente,
   Personal,
 } from './models';
@@ -19,20 +20,24 @@ export class EndoscopyApiService {
 
   list<T>(resource: string): Observable<T[]> {
     return this.http
-      .get<ApiListResponse<T> | T[]>(`${this.apiRoot}/${resource}/`)
+      .get<ApiListResponse<T> | T[]>(`${this.apiRoot}/${resource}/`, { withCredentials: true })
       .pipe(map((response) => (Array.isArray(response) ? response : response.results)));
   }
 
   create<T>(resource: string, payload: unknown): Observable<T> {
-    return this.http.post<T>(`${this.apiRoot}/${resource}/`, payload);
+    return this.http.post<T>(`${this.apiRoot}/${resource}/`, payload, { withCredentials: true });
+  }
+
+  update<T>(resource: string, id: number, payload: unknown): Observable<T> {
+    return this.http.put<T>(`${this.apiRoot}/${resource}/${id}/`, payload, { withCredentials: true });
   }
 
   createFromDraft<T>(kind: 'colonoscopia' | 'eda', payload: unknown): Observable<T> {
-    return this.http.post<T>(this.fromDraftUrl(kind), payload);
+    return this.http.post<T>(this.fromDraftUrl(kind), payload, { withCredentials: true });
   }
 
   uploadImage(payload: FormData): Observable<ImagenEndoscopica> {
-    return this.http.post<ImagenEndoscopica>(`${this.apiRoot}/imagenes/`, payload);
+    return this.http.post<ImagenEndoscopica>(`${this.apiRoot}/imagenes/`, payload, { withCredentials: true });
   }
 
   draftUrl(kind: 'colonoscopia' | 'eda', id: number): string {
@@ -65,5 +70,9 @@ export class EndoscopyApiService {
 
   loadImages(): Observable<ImagenEndoscopica[]> {
     return this.list<ImagenEndoscopica>('imagenes');
+  }
+
+  loadProcedureCatalog(): Observable<ProcedureCatalogItem[]> {
+    return this.list<ProcedureCatalogItem>('procedimientos/catalogo');
   }
 }

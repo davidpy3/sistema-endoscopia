@@ -1,0 +1,31 @@
+<main class="login-shell">
+  <section class="login-card card">
+    <div class="login-copy">
+      <p class="eyebrow">Acceso seguro</p>
+      <h1>Sistema de Endoscopia</h1>
+      <p>
+        Inicia sesión con tu usuario para ver, leer o editar según el nivel asignado.
+      </p>
+      <ul>
+        <li>Lectura: solo consulta y PDF.</li>
+        <li>Escritura: consulta y creación/edición.</li>
+        <li>Total: acceso completo.</li>
+      </ul>
+    </div>
+
+    <form class="login-form" [formGroup]="form" (ngSubmit)="submit()">
+      <label>
+        <span>Usuario</span>
+        <input type="text" formControlName="username" autocomplete="username" />
+      </label>
+      <label>
+        <span>Contraseña</span>
+        <input type="password" formControlName="password" autocomplete="current-password" />
+      </label>
+      <p class="error" *ngIf="auth.error() as error">{{ error }}</p>
+      <button type="submit" class="action primary" [disabled]="auth.loading()">
+        {{ auth.loading() ? 'Ingresando...' : 'Ingresar' }}
+      </button>
+    </form>
+  </section>
+</main>
