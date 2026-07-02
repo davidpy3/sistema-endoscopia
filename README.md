@@ -10,7 +10,16 @@ Guía paso a paso para levantar el backend Django y el frontend Angular en desar
 
 ## Opción rápida: un solo comando
 
-Si quieres levantar todo de una vez, ejecuta desde la raíz del proyecto:
+Si quieres levantar todo de una vez, haz esto desde la raíz del proyecto:
+
+1. Abre una terminal en la carpeta principal del repositorio.
+2. Dale permisos de ejecución al script si hace falta:
+
+```bash
+chmod +x start_all.sh
+```
+
+3. Ejecuta el script:
 
 ```bash
 ./start_all.sh

@@ -6,9 +6,17 @@ from .models import ImagenEndoscopica
 TIPO_CHOICES = [("eda", "EDA"), ("colonoscopia", "Colonoscopia")]
 
 
+class RelativeImageField(serializers.ImageField):
+    def to_representation(self, value):
+        if not value:
+            return None
+        return value.url
+
+
 class ImagenEndoscopicaSerializer(serializers.ModelSerializer):
     # El cliente manda "eda" o "colonoscopia" + object_id, no el content_type crudo
     tipo = serializers.ChoiceField(choices=TIPO_CHOICES, write_only=True)
+    archivo = RelativeImageField()
     tipo_display = serializers.SerializerMethodField(read_only=True)
 
     class Meta:

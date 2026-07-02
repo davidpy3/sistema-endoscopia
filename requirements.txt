@@ -9,6 +9,7 @@ django-filter==25.1
 djangorestframework==3.16.1
 fonttools==4.60.2
 pillow==11.3.0
+pip==26.1.2
 psycopg2-binary==2.9.12
 pycparser==2.23
 pydyf==0.11.0
