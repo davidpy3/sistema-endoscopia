@@ -19,5 +19,9 @@ def yn(value):
 
 
 def dash(value):
-    """Replica el patrón `${x||'—'}` del prototipo para strings vacíos."""
-    return value if value else "—"
+    """Replica el patrón `${x||'—'}` del prototipo, sin ocultar ceros."""
+    if value is None:
+        return "—"
+    if isinstance(value, str):
+        return value if value else "—"
+    return value

@@ -1,0 +1,37 @@
+<section class="image-panel card">
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">Consulta</p>
+      <h2>Galería de imágenes</h2>
+      <p class="panel-copy">Pestañas separadas para revisar colonoscopía y EDA por categoría.</p>
+    </div>
+    <div class="image-count">{{ filteredImages().length }} imágenes</div>
+  </div>
+
+  <nav class="image-tabs" aria-label="Categorías de imágenes">
+    <button
+      *ngFor="let tab of tabs"
+      type="button"
+      class="image-tab"
+      [class.active]="activeCategory() === tab.id"
+      (click)="selectCategory(tab.id)"
+    >
+      {{ tab.label }}
+    </button>
+  </nav>
+
+  <div class="gallery-grid" *ngIf="filteredImages().length; else emptyState">
+    <article class="gallery-item" *ngFor="let image of filteredImages()">
+      <img [src]="image.archivo" [alt]="image.epigrafe || 'Imagen endoscópica'" />
+      <div class="gallery-copy">
+        <span class="chip">{{ image.tipo_display }}</span>
+        <strong>{{ image.epigrafe || '—' }}</strong>
+        <p>Procedimiento #{{ image.object_id }} · Orden {{ image.orden }}</p>
+      </div>
+    </article>
+  </div>
+
+  <ng-template #emptyState>
+    <p class="empty-note">No hay imágenes para esta categoría.</p>
+  </ng-template>
+</section>

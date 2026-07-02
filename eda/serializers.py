@@ -6,6 +6,7 @@ from .models import (
     BiopsiaEDA,
     DiagnosticoEDA,
     SugerenciaEDA,
+    TEXTO_NORMAL_EDA,
 )
 
 
@@ -110,12 +111,24 @@ class EDASerializer(serializers.ModelSerializer):
 
     def _sync_segmentos(self, eda, segmentos_data):
         for data in segmentos_data:
+            segmento = data["segmento"]
+            estado = data.get("estado", "normal")
+            texto = data.get("texto", "")
+            segmento_actual = SegmentoEDA.objects.filter(
+                eda=eda,
+                segmento=segmento,
+            ).first()
+
+            if estado == "normal":
+                if segmento_actual is None or segmento_actual.estado != "normal" or not texto:
+                    texto = TEXTO_NORMAL_EDA.get(segmento, "")
+
             SegmentoEDA.objects.update_or_create(
                 eda=eda,
-                segmento=data["segmento"],
+                segmento=segmento,
                 defaults={
-                    "estado": data.get("estado", "normal"),
-                    "texto": data.get("texto", ""),
+                    "estado": estado,
+                    "texto": texto,
                     "cardias_hill": data.get("cardias_hill", ""),
                     "piloro": data.get("piloro", ""),
                 },

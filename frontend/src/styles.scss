@@ -1,0 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Manrope:wght@400;500;700;800&display=swap');
+
+:root {
+	color-scheme: dark;
+	--page-bg: #07121d;
+	--page-bg-2: #0d1d29;
+	--text: #edf7fb;
+	--text-soft: rgba(230, 242, 246, 0.78);
+}
+
+html,
+body {
+	height: 100%;
+}
+
+body {
+	margin: 0;
+	font-family: 'Manrope', 'Segoe UI', sans-serif;
+	color: var(--text);
+	background:
+		radial-gradient(circle at top left, rgba(42, 132, 120, 0.28), transparent 28%),
+		radial-gradient(circle at top right, rgba(245, 180, 84, 0.16), transparent 24%),
+		linear-gradient(180deg, var(--page-bg), var(--page-bg-2));
+}
+
+* {
+	box-sizing: border-box;
+}
+
+a {
+	color: inherit;
+}
+
+button,
+input,
+select,
+textarea {
+	font: inherit;
+}
+/* You can add global styles to this file, and also import other style files */

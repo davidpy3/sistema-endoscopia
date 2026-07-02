@@ -6,6 +6,7 @@ from .models import (
     BiopsiaColonoscopia,
     DiagnosticoColonoscopia,
     SugerenciaColonoscopia,
+    TEXTO_NORMAL_COLON,
 )
 
 
@@ -121,11 +122,23 @@ class ColonoscopiaSerializer(serializers.ModelSerializer):
         """Los 6 segmentos son fijos (unique_together colonoscopia+segmento),
         así que se hace upsert en vez de borrar/recrear."""
         for data in segmentos_data:
+            segmento = data["segmento"]
+            estado = data.get("estado", "normal")
+            texto = data.get("texto", "")
+            segmento_actual = SegmentoColon.objects.filter(
+                colonoscopia=colonoscopia,
+                segmento=segmento,
+            ).first()
+
+            if estado == "normal":
+                if segmento_actual is None or segmento_actual.estado != "normal" or not texto:
+                    texto = TEXTO_NORMAL_COLON.get(segmento, "")
+
             SegmentoColon.objects.update_or_create(
                 colonoscopia=colonoscopia,
-                segmento=data["segmento"],
+                segmento=segmento,
                 defaults={
-                    "estado": data.get("estado", "normal"),
-                    "texto": data.get("texto", ""),
+                    "estado": estado,
+                    "texto": texto,
                 },
             )

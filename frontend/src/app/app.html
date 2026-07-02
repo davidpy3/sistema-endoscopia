@@ -1,0 +1,419 @@
+<main class="app-shell">
+  <section class="hero card">
+    <div class="hero-copy">
+      <p class="eyebrow">Hospital Regional de Tumbes · JAMO II-2</p>
+      <h1>Sistema de Endoscopia</h1>
+      <p class="hero-text">
+        Angular conectado a la API Django para pacientes, personal, colonoscopías, EDA, imágenes y
+        borradores JSON.
+      </p>
+      <div class="hero-actions">
+        <button type="button" class="action primary" (click)="setTab('colonoscopias')">Nueva colonoscopía</button>
+        <button type="button" class="action secondary" (click)="setTab('eda')">Nueva EDA</button>
+        <button type="button" class="action ghost" (click)="openPatientDialog()">Nuevo paciente</button>
+        <button type="button" class="action ghost" (click)="openPersonalDialog()">Nuevo personal</button>
+        <button type="button" class="action ghost" (click)="setTab('imagenes')">Subir imagen</button>
+      </div>
+    </div>
+
+    <div class="hero-status">
+      <div class="status-pill" [class.loading]="loading()">{{ loading() ? 'Sincronizando' : 'Activo' }}</div>
+      <div class="status-message">{{ statusMessage() }}</div>
+      <div class="status-error" *ngIf="errorMessage() as error">{{ error }}</div>
+      <div class="metrics-grid">
+        <article class="metric"><span>Pacientes</span><strong>{{ stats().patients }}</strong></article>
+        <article class="metric"><span>Personal</span><strong>{{ stats().personnel }}</strong></article>
+        <article class="metric"><span>Colonoscopías</span><strong>{{ stats().colonoscopias }}</strong></article>
+        <article class="metric"><span>EDA</span><strong>{{ stats().edas }}</strong></article>
+        <article class="metric wide"><span>Imágenes</span><strong>{{ stats().images }}</strong></article>
+      </div>
+    </div>
+  </section>
+
+  <nav class="tab-bar card">
+    <button
+      *ngFor="let tab of tabs"
+      type="button"
+      class="tab"
+      [class.active]="activeTab() === tab.id"
+      (click)="setTab(tab.id)"
+    >
+      <span>{{ tab.label }}</span>
+      <small>{{ tab.description }}</small>
+    </button>
+  </nav>
+
+  <section class="content-stack">
+    <div class="card summary-card" *ngIf="activeTab() === 'resumen'">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Panel operativo</p>
+          <h2>Estado actual</h2>
+        </div>
+        <button type="button" class="action ghost" (click)="refreshAll()">Recargar datos</button>
+      </div>
+
+      <div class="summary-grid">
+        <article>
+          <h3>Últimos pacientes</h3>
+          <div class="mini-table">
+            <div class="mini-row" *ngFor="let patient of patients() | slice:0:5">
+              <span>{{ patient.apellidos }}, {{ patient.nombres }}</span>
+              <strong>{{ patient.dni }}</strong>
+            </div>
+            <p class="empty-note" *ngIf="!patients().length">Todavía no hay pacientes cargados.</p>
+          </div>
+        </article>
+
+        <article>
+          <h3>Últimos procedimientos</h3>
+          <div class="mini-table">
+            <div class="mini-row" *ngFor="let item of colonoscopias() | slice:0:3">
+              <span>Colonoscopía #{{ item.id }} · {{ item.paciente_nombre }}</span>
+              <button type="button" class="link-button" (click)="openReport('colonoscopia', item.id)">PDF</button>
+            </div>
+            <div class="mini-row" *ngFor="let item of edas() | slice:0:3">
+              <span>EDA #{{ item.id }} · {{ item.paciente_nombre }}</span>
+              <button type="button" class="link-button" (click)="openReport('eda', item.id)">PDF</button>
+            </div>
+            <p class="empty-note" *ngIf="!colonoscopias().length && !edas().length">Todavía no hay procedimientos.</p>
+          </div>
+        </article>
+      </div>
+
+      <section class="draft-box">
+        <h3>Importar borrador JSON</h3>
+        <p>Rehidrata un caso descargado desde la API y sigue editándolo.</p>
+        <form [formGroup]="draftImportForm" class="mini-import">
+          <label>
+            <span>Tipo</span>
+            <select formControlName="tipo">
+              <option value="colonoscopia">Colonoscopía</option>
+              <option value="eda">EDA</option>
+            </select>
+          </label>
+          <label>
+            <span>Archivo</span>
+            <input type="file" accept="application/json" (change)="onDraftSelected($event)" />
+          </label>
+          <p class="file-name" *ngIf="selectedDraftFile() as draftFile">{{ draftFile.name }}</p>
+          <div class="form-actions">
+            <button type="button" class="action secondary" (click)="importDraft()">Importar</button>
+            <button type="button" class="action ghost" (click)="resetDraftImportForm()">Limpiar</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <div class="two-column" *ngIf="activeTab() === 'pacientes'">
+      <section class="card form-card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Captura</p>
+            <h2>Pacientes registrados</h2>
+            <p>La alta se realiza desde una ventana emergente para mantener la pantalla limpia.</p>
+          </div>
+          <button type="button" class="action primary" (click)="openPatientDialog()">Nuevo paciente</button>
+        </div>
+        <div class="data-table">
+          <div class="data-row header"><span>Paciente</span><span>DNI</span><span>F. nacimiento</span></div>
+          <div class="data-row" *ngFor="let patient of patients()"><span>{{ patient.apellidos }}, {{ patient.nombres }}</span><span>{{ patient.dni }}</span><span>{{ patient.fecha_nacimiento || '—' }}</span></div>
+          <p class="empty-note" *ngIf="!patients().length">Sin pacientes aún.</p>
+        </div>
+      </section>
+    </div>
+
+    <div class="two-column" *ngIf="activeTab() === 'personal'">
+      <section class="card form-card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Captura</p>
+            <h2>Equipo disponible</h2>
+            <p>La alta se realiza desde una ventana emergente para mantener la pantalla limpia.</p>
+          </div>
+          <button type="button" class="action primary" (click)="openPersonalDialog()">Nuevo personal</button>
+        </div>
+        <div class="data-table">
+          <div class="data-row header"><span>Nombre</span><span>Rol</span><span>Estado</span></div>
+          <div class="data-row" *ngFor="let person of personnel()"><span>{{ person.nombre_completo }}</span><span>{{ person.rol_display }}</span><span>{{ person.activo ? 'Activo' : 'Inactivo' }}</span></div>
+          <p class="empty-note" *ngIf="!personnel().length">Sin personal aún.</p>
+        </div>
+      </section>
+    </div>
+
+    <div class="two-column wide-form" *ngIf="activeTab() === 'colonoscopias'">
+      <section class="card form-card procedure-card">
+        <div class="section-head">
+          <div><p class="eyebrow">Procedimiento</p><h2>Colonoscopía</h2></div>
+          <div class="sub-action-row">
+            <button type="button" class="link-button" *ngIf="lastColonoscopiaId() as lastId" (click)="openReport('colonoscopia', lastId)">PDF #{{ lastId }}</button>
+            <button type="button" class="link-button" *ngIf="lastColonoscopiaId() as lastDraft" (click)="openDraft('colonoscopia', lastDraft)">JSON</button>
+          </div>
+        </div>
+
+        <form [formGroup]="colonoscopiaForm" (ngSubmit)="saveColonoscopia()" class="stacked-form">
+          <div class="form-grid three-cols">
+            <label><span>Paciente</span><select formControlName="paciente"><option [ngValue]="null">—</option><option *ngFor="let patient of patients()" [ngValue]="patient.id">{{ patient.apellidos }}, {{ patient.nombres }}</option></select></label>
+            <label><span>Médico</span><select formControlName="medico"><option [ngValue]="null">—</option><option *ngFor="let doctor of doctors()" [ngValue]="doctor.id">{{ doctor.nombre_completo }}</option></select></label>
+            <label><span>Enfermera</span><select formControlName="enfermera"><option [ngValue]="null">—</option><option *ngFor="let nurse of nurses()" [ngValue]="nurse.id">{{ nurse.nombre_completo }}</option></select></label>
+            <label><span>Fecha</span><input type="date" formControlName="fecha" /></label>
+            <label><span>Sedación</span><select formControlName="sedacion"><option *ngFor="let option of sedationOptions" [ngValue]="option.value">{{ option.label }}</option></select></label>
+            <label><span>Retiro (min)</span><input type="number" step="0.5" formControlName="tiempo_retiro_min" /></label>
+          </div>
+
+          <div class="form-grid two-cols">
+            <label class="full-span"><span>Motivo</span><textarea rows="3" formControlName="motivo"></textarea></label>
+            <label class="full-span"><span>Antecedentes</span><textarea rows="3" formControlName="antecedentes"></textarea></label>
+            <label class="full-span"><span>Fármacos</span><input type="text" formControlName="farmacos" /></label>
+          </div>
+
+          <section class="subsection">
+            <div class="section-head compact"><div><h3>Segmentos explorados</h3><p>Normal / alterado con texto estructurado por segmento.</p></div></div>
+            <div class="segment-card" *ngFor="let group of colonSegmentGroups; let index = index" [formGroup]="group">
+              <div class="segment-head-row"><strong>{{ colonSegmentsData[index].label }}</strong><span class="segment-key">{{ colonSegmentsData[index].key }}</span></div>
+              <div class="segment-grid">
+                <label><span>Estado</span><select formControlName="estado" (change)="syncColonSegment(index)"><option value="normal">Normal</option><option value="alterado">Alterado</option></select></label>
+                <label class="full-span"><span>Texto</span><textarea rows="3" formControlName="texto"></textarea></label>
+              </div>
+            </div>
+          </section>
+
+          <section class="subsection">
+            <div class="section-head compact"><div><h3>Indicadores de calidad</h3><p>Boston e inspección anal.</p></div></div>
+            <div class="form-grid three-cols">
+              <label><span>Intubación cecal</span><select formControlName="intubacion_cecal"><option [ngValue]="null">—</option><option [ngValue]="true">Sí</option><option [ngValue]="false">No</option></select></label>
+              <label><span>Foto-doc ciego</span><select formControlName="foto_doc_ciego"><option [ngValue]="null">—</option><option [ngValue]="true">Sí</option><option [ngValue]="false">No</option></select></label>
+              <label><span>Ileoscopía distal</span><select formControlName="ileoscopia_distal"><option [ngValue]="null">—</option><option [ngValue]="true">Sí</option><option [ngValue]="false">No</option></select></label>
+              <label><span>Boston CD</span><select formControlName="boston_cd"><option [ngValue]="null">—</option><option [ngValue]="0">0</option><option [ngValue]="1">1</option><option [ngValue]="2">2</option><option [ngValue]="3">3</option></select></label>
+              <label><span>Boston CT</span><select formControlName="boston_ct"><option [ngValue]="null">—</option><option [ngValue]="0">0</option><option [ngValue]="1">1</option><option [ngValue]="2">2</option><option [ngValue]="3">3</option></select></label>
+              <label><span>Boston CI</span><select formControlName="boston_ci"><option [ngValue]="null">—</option><option [ngValue]="0">0</option><option [ngValue]="1">1</option><option [ngValue]="2">2</option><option [ngValue]="3">3</option></select></label>
+            </div>
+            <div class="form-grid two-cols text-blocks">
+              <label class="full-span"><span>Inspección pasiva</span><textarea rows="2" formControlName="insp_pasiva"></textarea></label>
+              <label class="full-span"><span>Inspección activa</span><textarea rows="2" formControlName="insp_activa"></textarea></label>
+              <label class="full-span"><span>Tacto rectal</span><textarea rows="2" formControlName="tacto_rectal"></textarea></label>
+              <label class="full-span"><span>Canal anal</span><textarea rows="2" formControlName="canal_anal"></textarea></label>
+            </div>
+          </section>
+
+          <section class="subsection repeaters">
+            <div class="section-head compact"><div><h3>Biopsias</h3><p>Frascos y lesiones.</p></div><button type="button" class="action ghost" (click)="addColonBiopsia()">Añadir</button></div>
+            <div class="repeater-item" *ngFor="let group of colonBiopsiaGroups; let index = index" [formGroup]="group">
+              <div class="segment-grid three-cols">
+                <label><span>Frasco</span><input type="text" formControlName="frasco" /></label>
+                <label class="wide-input"><span>Descripción</span><input type="text" formControlName="descripcion" /></label>
+                <label><span>N. lesiones</span><input type="number" min="0" formControlName="n_lesiones" /></label>
+              </div>
+              <button type="button" class="link-button danger" (click)="removeColonBiopsia(index)">Eliminar</button>
+            </div>
+          </section>
+
+          <section class="subsection repeaters">
+            <div class="section-head compact"><div><h3>Diagnósticos</h3><p>Filas libres.</p></div><button type="button" class="action ghost" (click)="addColonDiagnostico()">Añadir</button></div>
+            <div class="repeater-item" *ngFor="let group of colonDiagnosticoGroups; let index = index" [formGroup]="group">
+              <div class="segment-grid two-cols">
+                <label class="full-span"><span>Texto</span><input type="text" formControlName="texto" /></label>
+                <label><span>Orden</span><input type="number" min="0" formControlName="orden" /></label>
+              </div>
+              <button type="button" class="link-button danger" (click)="removeColonDiagnostico(index)">Eliminar</button>
+            </div>
+          </section>
+
+          <section class="subsection repeaters">
+            <div class="section-head compact"><div><h3>Sugerencias</h3><p>Plan de manejo.</p></div><button type="button" class="action ghost" (click)="addColonSugerencia()">Añadir</button></div>
+            <div class="repeater-item" *ngFor="let group of colonSugerenciaGroups; let index = index" [formGroup]="group">
+              <div class="segment-grid two-cols">
+                <label class="full-span"><span>Texto</span><input type="text" formControlName="texto" /></label>
+                <label><span>Orden</span><input type="number" min="0" formControlName="orden" /></label>
+              </div>
+              <button type="button" class="link-button danger" (click)="removeColonSugerencia(index)">Eliminar</button>
+            </div>
+          </section>
+
+          <div class="form-actions sticky-actions"><button type="submit" class="action primary">Guardar colonoscopía</button><button type="button" class="action ghost" (click)="resetColonoscopiaForm()">Restaurar</button></div>
+        </form>
+      </section>
+
+      <aside class="card table-card side-panel">
+        <div class="section-head"><div><p class="eyebrow">Consulta</p><h2>Colonoscopías</h2></div></div>
+        <div class="procedure-list">
+          <article class="procedure-item" *ngFor="let item of colonoscopias()">
+            <div class="procedure-title"><strong>#{{ item.id }}</strong><span>{{ item.paciente_nombre }}</span></div>
+            <p>{{ item.medico_nombre }} · {{ item.fecha }}</p>
+            <div class="chip-row"><span class="chip">Boston {{ item.boston_total ?? '—' }}</span><span class="chip">Prep. {{ item.preparacion_adecuada === null ? '—' : item.preparacion_adecuada ? 'Sí' : 'No' }}</span></div>
+            <div class="inline-actions"><button type="button" class="link-button" (click)="openReport('colonoscopia', item.id)">PDF</button><button type="button" class="link-button" (click)="openDraft('colonoscopia', item.id)">JSON</button></div>
+          </article>
+          <p class="empty-note" *ngIf="!colonoscopias().length">Sin colonoscopías cargadas.</p>
+        </div>
+      </aside>
+    </div>
+
+    <div class="two-column wide-form" *ngIf="activeTab() === 'eda'">
+      <section class="card form-card procedure-card">
+        <div class="section-head">
+          <div><p class="eyebrow">Procedimiento</p><h2>EDA</h2></div>
+          <div class="sub-action-row">
+            <button type="button" class="link-button" *ngIf="lastEdaId() as lastId" (click)="openReport('eda', lastId)">PDF #{{ lastId }}</button>
+            <button type="button" class="link-button" *ngIf="lastEdaId() as lastDraft" (click)="openDraft('eda', lastDraft)">JSON</button>
+          </div>
+        </div>
+
+        <form [formGroup]="edaForm" (ngSubmit)="saveEda()" class="stacked-form">
+          <div class="form-grid three-cols">
+            <label><span>Paciente</span><select formControlName="paciente"><option [ngValue]="null">—</option><option *ngFor="let patient of patients()" [ngValue]="patient.id">{{ patient.apellidos }}, {{ patient.nombres }}</option></select></label>
+            <label><span>Médico</span><select formControlName="medico"><option [ngValue]="null">—</option><option *ngFor="let doctor of doctors()" [ngValue]="doctor.id">{{ doctor.nombre_completo }}</option></select></label>
+            <label><span>Enfermera</span><select formControlName="enfermera"><option [ngValue]="null">—</option><option *ngFor="let nurse of nurses()" [ngValue]="nurse.id">{{ nurse.nombre_completo }}</option></select></label>
+            <label><span>Fecha</span><input type="date" formControlName="fecha" /></label>
+            <label><span>Sedación</span><select formControlName="sedacion"><option *ngFor="let option of sedationOptions" [ngValue]="option.value">{{ option.label }}</option></select></label>
+            <label><span>Examinación (min)</span><input type="number" min="0" formControlName="tiempo_examen_min" /></label>
+          </div>
+
+          <div class="form-grid two-cols">
+            <label class="full-span"><span>Motivo</span><textarea rows="3" formControlName="motivo"></textarea></label>
+            <label class="full-span"><span>Antecedentes</span><textarea rows="3" formControlName="antecedentes"></textarea></label>
+            <label class="full-span"><span>Fármacos</span><input type="text" formControlName="farmacos" /></label>
+          </div>
+
+          <section class="subsection">
+            <div class="section-head compact"><div><h3>Segmentos explorados</h3><p>Fondo y Antro incluyen subcampos condicionales.</p></div></div>
+            <div class="segment-card" *ngFor="let group of edaSegmentGroups; let index = index" [formGroup]="group">
+              <div class="segment-head-row"><strong>{{ edaSegmentsData[index].label }}</strong><span class="segment-key">{{ edaSegmentsData[index].key }}</span></div>
+              <div class="segment-grid">
+                <label><span>Estado</span><select formControlName="estado" (change)="syncEdaSegment(index)"><option value="normal">Normal</option><option value="alterado">Alterado</option></select></label>
+                <label class="full-span"><span>Texto</span><textarea rows="3" formControlName="texto"></textarea></label>
+                <label *ngIf="edaSegmentsData[index].key === 'fondo'"><span>Cardias / Hill</span><select formControlName="cardias_hill"><option *ngFor="let option of hillOptions" [ngValue]="option.value">{{ option.label }}</option></select></label>
+                <label *ngIf="edaSegmentsData[index].key === 'antro'"><span>Píloro</span><select formControlName="piloro"><option *ngFor="let option of piloroOptions" [ngValue]="option.value">{{ option.label }}</option></select></label>
+              </div>
+            </div>
+          </section>
+
+          <section class="subsection">
+            <div class="section-head compact"><div><h3>Indicadores PEACE</h3><p>Los totales se calculan en backend.</p></div></div>
+            <div class="form-grid three-cols">
+              <label><span>Esófago</span><select formControlName="peace_esofago"><option [ngValue]="null">—</option><option [ngValue]="1">1</option><option [ngValue]="2">2</option><option [ngValue]="3">3</option></select></label>
+              <label><span>Estómago</span><select formControlName="peace_estomago"><option [ngValue]="null">—</option><option [ngValue]="1">1</option><option [ngValue]="2">2</option><option [ngValue]="3">3</option></select></label>
+              <label><span>Duodeno</span><select formControlName="peace_duodeno"><option [ngValue]="null">—</option><option [ngValue]="1">1</option><option [ngValue]="2">2</option><option [ngValue]="3">3</option></select></label>
+            </div>
+          </section>
+
+          <section class="subsection repeaters">
+            <div class="section-head compact"><div><h3>Biopsias</h3><p>Frascos y lesiones.</p></div><button type="button" class="action ghost" (click)="addEdaBiopsia()">Añadir</button></div>
+            <div class="repeater-item" *ngFor="let group of edaBiopsiaGroups; let index = index" [formGroup]="group">
+              <div class="segment-grid three-cols">
+                <label><span>Frasco</span><input type="text" formControlName="frasco" /></label>
+                <label class="wide-input"><span>Descripción</span><input type="text" formControlName="descripcion" /></label>
+                <label><span>N. lesiones</span><input type="number" min="0" formControlName="n_lesiones" /></label>
+              </div>
+              <button type="button" class="link-button danger" (click)="removeEdaBiopsia(index)">Eliminar</button>
+            </div>
+          </section>
+
+          <section class="subsection repeaters">
+            <div class="section-head compact"><div><h3>Diagnósticos</h3><p>Filas libres.</p></div><button type="button" class="action ghost" (click)="addEdaDiagnostico()">Añadir</button></div>
+            <div class="repeater-item" *ngFor="let group of edaDiagnosticoGroups; let index = index" [formGroup]="group">
+              <div class="segment-grid two-cols">
+                <label class="full-span"><span>Texto</span><input type="text" formControlName="texto" /></label>
+                <label><span>Orden</span><input type="number" min="0" formControlName="orden" /></label>
+              </div>
+              <button type="button" class="link-button danger" (click)="removeEdaDiagnostico(index)">Eliminar</button>
+            </div>
+          </section>
+
+          <section class="subsection repeaters">
+            <div class="section-head compact"><div><h3>Sugerencias</h3><p>Plan de manejo.</p></div><button type="button" class="action ghost" (click)="addEdaSugerencia()">Añadir</button></div>
+            <div class="repeater-item" *ngFor="let group of edaSugerenciaGroups; let index = index" [formGroup]="group">
+              <div class="segment-grid two-cols">
+                <label class="full-span"><span>Texto</span><input type="text" formControlName="texto" /></label>
+                <label><span>Orden</span><input type="number" min="0" formControlName="orden" /></label>
+              </div>
+              <button type="button" class="link-button danger" (click)="removeEdaSugerencia(index)">Eliminar</button>
+            </div>
+          </section>
+
+          <div class="form-actions sticky-actions"><button type="submit" class="action primary">Guardar EDA</button><button type="button" class="action ghost" (click)="resetEdaForm()">Restaurar</button></div>
+        </form>
+      </section>
+
+      <aside class="card table-card side-panel">
+        <div class="section-head"><div><p class="eyebrow">Consulta</p><h2>EDA</h2></div></div>
+        <div class="procedure-list">
+          <article class="procedure-item" *ngFor="let item of edas()">
+            <div class="procedure-title"><strong>#{{ item.id }}</strong><span>{{ item.paciente_nombre }}</span></div>
+            <p>{{ item.medico_nombre }} · {{ item.fecha }}</p>
+            <div class="chip-row"><span class="chip">PEACE {{ item.peace_total ?? '—' }}</span></div>
+            <div class="inline-actions"><button type="button" class="link-button" (click)="openReport('eda', item.id)">PDF</button><button type="button" class="link-button" (click)="openDraft('eda', item.id)">JSON</button></div>
+          </article>
+          <p class="empty-note" *ngIf="!edas().length">Sin EDA cargadas.</p>
+        </div>
+      </aside>
+    </div>
+
+    <div class="content-stack" *ngIf="activeTab() === 'imagenes'">
+      <section class="card form-card">
+        <div class="section-head"><div><p class="eyebrow">Carga</p><h2>Subir imagen endoscópica</h2></div></div>
+        <form [formGroup]="imageForm" (ngSubmit)="uploadImage()" class="form-grid">
+          <label><span>Procedimiento</span><select formControlName="tipo"><option value="colonoscopia">Colonoscopía</option><option value="eda">EDA</option></select></label>
+          <label><span>ID del procedimiento</span><input type="number" min="1" formControlName="object_id" /></label>
+          <label class="full-span"><span>Archivo</span><input type="file" accept="image/*" (change)="onImageSelected($event)" /></label>
+          <p class="file-name full-span" *ngIf="selectedImageFile() as imageFile">{{ imageFile.name }}</p>
+          <label class="full-span"><span>Epígrafe</span><input type="text" formControlName="epigrafe" /></label>
+          <label><span>Orden</span><input type="number" min="0" formControlName="orden" /></label>
+          <div class="form-actions full-span"><button type="submit" class="action primary">Subir</button><button type="button" class="action ghost" (click)="resetImageForm()">Limpiar</button></div>
+        </form>
+      </section>
+
+      <app-image-categories-panel [images]="images()"></app-image-categories-panel>
+    </div>
+
+  </section>
+
+  <div class="modal-backdrop" *ngIf="patientDialogOpen()" (click)="closePatientDialog()">
+    <section class="modal-card card" role="dialog" aria-modal="true" aria-labelledby="patient-modal-title" (click)="$event.stopPropagation()">
+      <div class="modal-head">
+        <div>
+          <p class="eyebrow">Alta</p>
+          <h2 id="patient-modal-title">Nuevo paciente</h2>
+        </div>
+        <button type="button" class="modal-close" (click)="closePatientDialog()">×</button>
+      </div>
+
+      <form [formGroup]="patientForm" (ngSubmit)="savePatient()" class="form-grid modal-form">
+        <label><span>Nombres</span><input type="text" formControlName="nombres" /></label>
+        <label><span>Apellidos</span><input type="text" formControlName="apellidos" /></label>
+        <label><span>DNI</span><input type="text" maxlength="8" formControlName="dni" /></label>
+        <label><span>Fecha de nacimiento</span><input type="date" formControlName="fecha_nacimiento" /></label>
+        <label><span>Sexo</span><select formControlName="sexo"><option *ngFor="let option of sexoOptions" [ngValue]="option.value">{{ option.label }}</option></select></label>
+        <label><span>Teléfono</span><input type="text" formControlName="telefono" /></label>
+        <div class="form-actions full-span modal-actions">
+          <button type="submit" class="action primary">Guardar paciente</button>
+          <button type="button" class="action ghost" (click)="resetPatientForm()">Limpiar</button>
+          <button type="button" class="action ghost" (click)="closePatientDialog()">Cerrar</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" *ngIf="personalDialogOpen()" (click)="closePersonalDialog()">
+    <section class="modal-card card" role="dialog" aria-modal="true" aria-labelledby="personal-modal-title" (click)="$event.stopPropagation()">
+      <div class="modal-head">
+        <div>
+          <p class="eyebrow">Alta</p>
+          <h2 id="personal-modal-title">Nuevo personal</h2>
+        </div>
+        <button type="button" class="modal-close" (click)="closePersonalDialog()">×</button>
+      </div>
+
+      <form [formGroup]="personalForm" (ngSubmit)="savePersonal()" class="form-grid modal-form">
+        <label class="full-span"><span>Nombre completo</span><input type="text" formControlName="nombre_completo" /></label>
+        <label><span>Rol</span><select formControlName="rol"><option value="medico">Médico endoscopista</option><option value="enfermera">Enfermera asistente</option></select></label>
+        <label><span>Colegiatura</span><input type="text" formControlName="colegiatura" /></label>
+        <label><span>Activo</span><select formControlName="activo"><option [ngValue]="true">Sí</option><option [ngValue]="false">No</option></select></label>
+        <div class="form-actions full-span modal-actions">
+          <button type="submit" class="action primary">Guardar personal</button>
+          <button type="button" class="action ghost" (click)="resetPersonalForm()">Limpiar</button>
+          <button type="button" class="action ghost" (click)="closePersonalDialog()">Cerrar</button>
+        </div>
+      </form>
+    </section>
+  </div>
+</main>

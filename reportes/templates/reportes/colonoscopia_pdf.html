@@ -1,0 +1,221 @@
+{% load reportes_extras %}
+<!doctype html>
+<html lang="es">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Informe de Colonoscopía</title>
+	{% include "reportes/_report_style.html" %}
+</head>
+<body>
+	<div class="page">
+		<div class="header">
+			<div>
+				<div class="hospital">HOSPITAL REGIONAL DE TUMBES — JAMO II-2</div>
+				<div class="service">SERVICIO DE GASTROENTEROLOGÍA</div>
+			</div>
+			<div>
+				<div class="badge">COLONOSCOPÍA</div>
+				<div class="subtitle" style="margin-top: 8px; text-align: right;">
+					Fecha: {{ c.fecha|date:"d/m/Y" }}
+				</div>
+			</div>
+		</div>
+
+		<div class="section">
+			<h2>1. Datos del paciente y del procedimiento</h2>
+			<div class="card">
+				<table class="table">
+					<tbody>
+						<tr>
+							<th>Paciente</th>
+							<td>{{ c.paciente }}</td>
+						</tr>
+						<tr>
+							<th>DNI</th>
+							<td>{{ c.paciente.dni|dash }}</td>
+						</tr>
+						<tr>
+							<th>Edad</th>
+							<td>{{ edad|dash }}</td>
+						</tr>
+						<tr>
+							<th>Médico endoscopista</th>
+							<td>{{ c.medico }}</td>
+						</tr>
+						<tr>
+							<th>Enfermera asistente</th>
+							<td>{{ c.enfermera|dash }}</td>
+						</tr>
+						<tr>
+							<th>Motivo</th>
+							<td class="text-block">{{ c.motivo|dash }}</td>
+						</tr>
+						<tr>
+							<th>Antecedentes</th>
+							<td class="text-block">{{ c.antecedentes|dash }}</td>
+						</tr>
+						<tr>
+							<th>Tipo de sedación</th>
+							<td>{{ c.get_sedacion_display|dash }}</td>
+						</tr>
+						<tr>
+							<th>Fármacos utilizados</th>
+							<td class="text-block">{{ c.farmacos|dash }}</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+
+		<div class="section">
+			<h2>2. Hallazgos endoscópicos por segmento</h2>
+			<div class="card">
+				{% for segmento in segmentos %}
+					<div class="segment">
+						<div class="segment-head">
+							<div class="segment-title">{{ segmento.get_segmento_display }}</div>
+							<div class="{% if segmento.estado == 'normal' %}state-ok{% else %}state-warn{% endif %}">{{ segmento.get_estado_display }}</div>
+						</div>
+						<div class="text-block">{{ segmento.texto|dash }}</div>
+					</div>
+				{% endfor %}
+			</div>
+		</div>
+
+		<div class="section">
+			<h2>3. Indicadores de calidad</h2>
+			<div class="card">
+				<table class="table">
+					<tbody>
+						<tr>
+							<th>Intubación cecal</th>
+							<td>{{ cecal_txt }}</td>
+						</tr>
+						<tr>
+							<th>Foto-documentación de ciego</th>
+							<td>{{ c.foto_doc_ciego|yn }}</td>
+						</tr>
+						<tr>
+							<th>Ileoscopía distal</th>
+							<td>{{ ileo_txt }}</td>
+						</tr>
+						<tr>
+							<th>Boston colon derecho</th>
+							<td>{{ c.boston_cd|dash }}</td>
+						</tr>
+						<tr>
+							<th>Boston colon transverso</th>
+							<td>{{ c.boston_ct|dash }}</td>
+						</tr>
+						<tr>
+							<th>Boston colon izquierdo</th>
+							<td>{{ c.boston_ci|dash }}</td>
+						</tr>
+						<tr>
+							<th>Boston total</th>
+							<td>{{ boston_total|dash }}</td>
+						</tr>
+						<tr>
+							<th>Preparación adecuada</th>
+							<td>{{ prep_adecuada_txt }}</td>
+						</tr>
+						<tr>
+							<th>Tiempo de retiro (min)</th>
+							<td>{{ c.tiempo_retiro_min|dash }}</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+
+		<div class="section">
+			<h2>4. Inspección anal y tacto rectal</h2>
+			<div class="card">
+				<div class="kv">
+					<div class="label">Inspección pasiva</div>
+					<div class="text-block">{{ c.insp_pasiva|dash }}</div>
+					<div class="label">Inspección activa</div>
+					<div class="text-block">{{ c.insp_activa|dash }}</div>
+					<div class="label">Tacto rectal</div>
+					<div class="text-block">{{ c.tacto_rectal|dash }}</div>
+					<div class="label">Canal anal</div>
+					<div class="text-block">{{ c.canal_anal|dash }}</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="section">
+			<h2>5. Biopsias</h2>
+			<div class="card">
+				<ul class="list">
+					{% for biopsia in biopsias %}
+						<li>
+							<strong>Frasco {{ biopsia.frasco|dash }}:</strong>
+							{{ biopsia.descripcion|dash }}
+							{% if biopsia.n_lesiones is not None %}
+								<span class="muted">({{ biopsia.n_lesiones }} lesión{{ biopsia.n_lesiones|pluralize }})</span>
+							{% else %}
+								<span class="muted">(—)</span>
+							{% endif %}
+						</li>
+					{% empty %}
+						<li>Sin biopsias.</li>
+					{% endfor %}
+				</ul>
+			</div>
+		</div>
+
+		<div class="section">
+			<h2>6. Diagnósticos</h2>
+			<div class="card">
+				<ul class="list">
+					{% for diagnostico in diagnosticos %}
+						<li>{{ diagnostico.texto|dash }}</li>
+					{% empty %}
+						<li>—</li>
+					{% endfor %}
+				</ul>
+			</div>
+		</div>
+
+		<div class="section">
+			<h2>7. Sugerencias / plan</h2>
+			<div class="card">
+				<ul class="list">
+					{% for sugerencia in sugerencias %}
+						<li>{{ sugerencia.texto|dash }}</li>
+					{% empty %}
+						<li>—</li>
+					{% endfor %}
+				</ul>
+			</div>
+		</div>
+
+		<div class="section">
+			<h2>8. Imágenes endoscópicas</h2>
+			<div class="card">
+				{% if imagenes %}
+					<div class="images">
+						{% for imagen in imagenes %}
+							<div class="image-card">
+								<img src="{{ imagen.url }}" alt="{{ imagen.epigrafe|dash }}">
+								<div class="image-caption">{{ imagen.epigrafe|dash }}</div>
+							</div>
+						{% endfor %}
+					</div>
+				{% else %}
+					<div class="muted">—</div>
+				{% endif %}
+			</div>
+		</div>
+
+		<div class="footer">
+			<div class="signature">
+				{{ c.medico.nombre_completo }}<br>
+				<span class="muted">Médico Endoscopista</span>
+			</div>
+		</div>
+	</div>
+</body>
+</html>
